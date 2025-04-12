@@ -34,9 +34,15 @@ const ChatList = () => {
         
         // Update chat context with loaded conversations
         setConversations({
-          active: data.active,
-          waiting: data.waiting,
-          bot: data.bot
+          active: data.active || [],
+          waiting: data.waiting || [],
+          bot: data.bot || []
+        });
+        
+        console.log("Conversas carregadas:", {
+          active: data.active?.length || 0,
+          waiting: data.waiting?.length || 0,
+          bot: data.bot?.length || 0
         });
       } catch (error) {
         console.error("Erro ao carregar conversas:", error);

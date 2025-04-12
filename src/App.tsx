@@ -20,6 +20,7 @@ import ProfileSettings from "./pages/ProfileSettings";
 import UsersManagement from "./pages/UsersManagement";
 import Reports from "./pages/Reports";
 import ClientChat from "./pages/ClientChat";
+import FAQ from "./pages/FAQ";
 import { createDemoUsers } from "./utils/seedDemoUsers";
 
 // Create a client
@@ -42,6 +43,7 @@ const App = () => {
                 <Route path="/unauthorized" element={<Unauthorized />} />
                 <Route path="/" element={<Index />} />
                 <Route path="/chat" element={<ClientChat />} />
+                <Route path="/faq" element={<FAQ />} />
                 
                 <Route
                   path="/"

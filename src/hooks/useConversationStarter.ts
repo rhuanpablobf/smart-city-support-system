@@ -75,12 +75,12 @@ export const useConversationStarter = ({
       // Mostrar toast de sucesso
       toast({
         title: "Conversa iniciada",
-        description: "Redirecionando para o chat...",
+        description: "Redirecionando para o atendimento...",
       });
       
-      // Redirect to the chat page with the new conversation ID after a short delay
+      // Redirect to the FAQ page with the new conversation ID
       setTimeout(() => {
-        navigate(`/chat?conversationId=${conversation.id}`);
+        navigate(`/faq?conversationId=${conversation.id}`);
       }, 500);
     } catch (error: any) {
       console.error("Erro ao iniciar conversa:", error);
