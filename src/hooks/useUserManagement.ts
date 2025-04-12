@@ -1,11 +1,12 @@
+
 import { useState, useEffect } from 'react';
 import { User, Department, Service, UserFormValues } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  fetchUsers,
-  addUser,
-  updateUser,
-  deleteUser 
+  fetchUsers as fetchUsersService,
+  addUser as addUserService,
+  updateUser as updateUserService,
+  deleteUser as deleteUserService
 } from '@/services/user';
 import { fetchDepartments as fetchDepartmentsService } from '@/services/departmentService';
 import { fetchServices as fetchServicesService, getDepartmentName } from '@/services/serviceService';
@@ -22,10 +23,10 @@ export function useUserManagement() {
   const { toast } = useToast();
 
   // Fetch users from Supabase
-  const fetchUsers = async () => {
+  const loadUsers = async () => {
     try {
       setLoading(true);
-      const fetchedUsers = await fetchUsers();
+      const fetchedUsers = await fetchUsersService();
       setUsers(fetchedUsers);
     } catch (error: any) {
       toast({
@@ -69,7 +70,7 @@ export function useUserManagement() {
   // Effect to fetch data from Supabase
   useEffect(() => {
     const fetchData = async () => {
-      await Promise.all([fetchUsers(), fetchDepartments(), fetchServices()]);
+      await Promise.all([loadUsers(), fetchDepartments(), fetchServices()]);
     };
     
     fetchData();
@@ -91,7 +92,7 @@ export function useUserManagement() {
         status: userData.status || 'active'
       };
       
-      const newUser = await addUser(userDataWithStatus);
+      const newUser = await addUserService(userDataWithStatus);
       
       // Update local state
       setUsers(prevUsers => [...prevUsers, newUser]);
@@ -121,7 +122,7 @@ export function useUserManagement() {
         status: userData.status || 'active'
       };
       
-      await updateUser(userId, userDataWithStatus);
+      await updateUserService(userId, userDataWithStatus);
       
       // Fetch department name for display
       const departmentName = await getDepartmentName(userData.department_id || '');
@@ -154,13 +155,14 @@ export function useUserManagement() {
         description: error.message,
         variant: "destructive",
       });
+      throw error;
     }
   };
 
   // Delete user
   const deleteUser = async (userId: string) => {
     try {
-      await deleteUser(userId);
+      await deleteUserService(userId);
       
       // Update local state
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
@@ -175,6 +177,7 @@ export function useUserManagement() {
         description: error.message,
         variant: "destructive",
       });
+      throw error;
     }
   };
 
