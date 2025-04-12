@@ -452,6 +452,20 @@ export type Database = {
         Args: { agent_id_param: string }
         Returns: undefined
       }
+      get_all_profiles_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          email: string
+          role: string
+          department_id: string
+          max_simultaneous_chats: number
+          status: string
+          avatar: string
+          department_name: string
+        }[]
+      }
       get_current_user_role: {
         Args: Record<PropertyKey, never>
         Returns: string
