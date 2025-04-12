@@ -25,12 +25,13 @@ type ServiceListProps = {
 };
 
 export const ServiceList = ({ departmentId }: ServiceListProps) => {
-  const [newService, setNewService] = useState<Partial<Service>>({
+  const [newService, setNewService] = useState<Service>({
+    id: '',
     name: '',
     description: '',
-    department_id: departmentId  // Updated to use department_id instead of departmentId
+    department_id: departmentId 
   });
-  const [editService, setEditService] = useState<Partial<Service> | null>(null);
+  const [editService, setEditService] = useState<Service | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [expandedServices, setExpandedServices] = useState<Record<string, boolean>>({});
@@ -53,10 +54,14 @@ export const ServiceList = ({ departmentId }: ServiceListProps) => {
 
   // Add service mutation
   const addServiceMutation = useMutation({
-    mutationFn: async (serviceData: Partial<Service>) => {
+    mutationFn: async (serviceData: Service) => {
       const { data, error } = await supabase
         .from('services')
-        .insert(serviceData)
+        .insert({
+          name: serviceData.name,
+          description: serviceData.description,
+          department_id: serviceData.department_id
+        })
         .select()
         .single();
         
@@ -66,9 +71,10 @@ export const ServiceList = ({ departmentId }: ServiceListProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services', departmentId] });
       setNewService({ 
+        id: '',
         name: '', 
         description: '', 
-        department_id: departmentId  // Updated to use department_id instead of departmentId
+        department_id: departmentId  
       });
       setOpenDialog(false);
     },
@@ -76,7 +82,7 @@ export const ServiceList = ({ departmentId }: ServiceListProps) => {
 
   // Update service mutation
   const updateServiceMutation = useMutation({
-    mutationFn: async (serviceData: Partial<Service>) => {
+    mutationFn: async (serviceData: Service) => {
       const { data, error } = await supabase
         .from('services')
         .update({

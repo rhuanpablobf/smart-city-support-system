@@ -8,10 +8,19 @@ export interface User {
   role: UserRole;
   avatar?: string;
   department?: string;
-  department_id?: string; // Changed to match DB column name
+  department_id?: string;
   serviceIds?: string[];
   status: 'active' | 'inactive';
   maxSimultaneousChats?: number;
+}
+
+export interface UserFormValues {
+  name: string;
+  email: string;
+  role: 'admin' | 'manager' | 'agent';
+  department_id?: string;
+  serviceIds?: string[];
+  status: 'active' | 'inactive';
 }
 
 export interface ChatMessage {
@@ -42,9 +51,9 @@ export interface Department {
 
 export interface Service {
   id: string;
-  department_id: string; // Changed to match DB column name
+  department_id: string;
   name: string;
-  description: string;
+  description?: string;
 }
 
 export interface Conversation {
