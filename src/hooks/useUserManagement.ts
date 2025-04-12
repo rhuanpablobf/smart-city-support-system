@@ -1,8 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { User, Department, Service } from '@/types';
+import { User, Department, Service, UserFormValues } from '@/types';
 import { useToast } from '@/hooks/use-toast';
-import { UserFormValues } from '@/types';
 import { 
   fetchUsers as fetchUsersService,
   addUser as addUserService,
@@ -12,7 +11,8 @@ import {
 import { fetchDepartments as fetchDepartmentsService } from '@/services/departmentService';
 import { fetchServices as fetchServicesService, getDepartmentName } from '@/services/serviceService';
 
-export { UserFormValues };
+// Using 'export type' instead of 'export' to fix the TS1205 error
+export type { UserFormValues };
 
 export function useUserManagement() {
   const [users, setUsers] = useState<User[]>([]);
