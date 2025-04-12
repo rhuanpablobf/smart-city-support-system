@@ -88,7 +88,7 @@ export const AgentServiceAssignment = () => {
   // Set initial selections when assignments load
   useEffect(() => {
     if (assignments && Object.keys(assignments).length > 0) {
-      setSelectedAssignments(assignments);
+      setSelectedAssignments(assignments as Record<string, string[]>);
     }
   }, [assignments]);
 
@@ -218,3 +218,4 @@ export const AgentServiceAssignment = () => {
     </Card>
   );
 };
+
