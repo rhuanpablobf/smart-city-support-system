@@ -19,6 +19,29 @@ const ClientChat = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Carrega departamentos quando o componente monta
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('departments')
+          .select('*');
+
+        if (error) throw error;
+        setDepartments(data || []);
+      } catch (error) {
+        console.error("Erro ao carregar departamentos:", error);
+        toast({
+          title: "Erro ao carregar departamentos",
+          description: "Não foi possível carregar os departamentos.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchDepartments();
+  }, [toast]);
+
   // Quando o departamento muda, atualiza os serviços disponíveis
   useEffect(() => {
     if (selectedDepartment) {
@@ -30,8 +53,9 @@ const ClientChat = () => {
             .eq('department_id', selectedDepartment);
 
           if (error) throw error;
-          setServices(data);
+          setServices(data || []);
         } catch (error) {
+          console.error("Erro ao carregar serviços:", error);
           toast({
             title: "Erro ao carregar serviços",
             description: "Não foi possível carregar os serviços para este departamento.",
@@ -46,27 +70,25 @@ const ClientChat = () => {
     }
   }, [selectedDepartment, toast]);
 
-  useEffect(() => {
-    // Fetch departments
-    const fetchDepartments = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('departments')
-          .select('*');
+  // Função para formatar CPF
+  const formatCPF = (value) => {
+    // Remove caracteres não numéricos
+    const numbers = value.replace(/\D/g, '');
+    
+    // Aplica a máscara XXX.XXX.XXX-XX
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6) return `${numbers.slice(0, 3)}.${numbers.slice(3)}`;
+    if (numbers.length <= 9) return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6)}`;
+    return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
+  };
 
-        if (error) throw error;
-        setDepartments(data);
-      } catch (error) {
-        toast({
-          title: "Erro ao carregar departamentos",
-          description: "Não foi possível carregar os departamentos.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchDepartments();
-  }, [toast]);
+  const handleCPFChange = (e) => {
+    const formatted = formatCPF(e.target.value);
+    // Limita a 14 caracteres (XXX.XXX.XXX-XX)
+    if (formatted.length <= 14) {
+      setCpf(formatted);
+    }
+  };
 
   // Function to start a new conversation
   const startConversation = async () => {
@@ -97,7 +119,12 @@ const ClientChat = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Detalhes do erro:", error);
+        throw error;
+      }
+      
+      console.log("Conversa criada com sucesso:", conversation);
       
       // Redirect to the chat page with the new conversation ID
       navigate(`/chat?conversationId=${conversation.id}`);
@@ -131,7 +158,8 @@ const ClientChat = () => {
                     placeholder="000.000.000-00"
                     className="peer mt-1 w-full rounded-md border border-gray-200 px-5 py-3 text-base text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-blue-300"
                     value={cpf}
-                    onChange={(e) => setCpf(e.target.value)}
+                    onChange={handleCPFChange}
+                    maxLength={14}
                   />
                 </div>
                 <div className="relative">
