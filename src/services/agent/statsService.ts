@@ -18,7 +18,7 @@ type ConversationStatusCount = {
 };
 
 export type AgentDashboardStats = {
-  activeChats: number;
+  myActiveChats: number;
   maxChats: number;
   waitingChats: number;
   avgWaitTime: number;
@@ -33,9 +33,8 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     // Get agent status count
     const { data: agentStatusData, error: agentError } = await supabase
       .from('agent_statuses')
-      .select('status, count')
       .select('status')
-      .eq('id', 'is not null');
+      .is('id', 'not null');
       
     if (agentError) throw agentError;
     
@@ -56,7 +55,6 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     // Get conversation status count
     const { data: conversationsData, error: conversationsError } = await supabase
       .from('conversations')
-      .select('status, count', { count: 'exact' })
       .select('status');
       
     if (conversationsError) throw conversationsError;
@@ -83,7 +81,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     const { data: waitingTimeData, error: waitingTimeError } = await supabase
       .from('conversations')
       .select('created_at, updated_at')
-      .eq('status', 'completed');
+      .eq('status', 'completed' as ConversationStatus);
       
     if (waitingTimeError) throw waitingTimeError;
     
@@ -104,7 +102,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     const { count: activeChatsCount, error: activeChatsError } = await supabase
       .from('conversations')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'active')
+      .eq('status', 'active' as ConversationStatus)
       .eq('agent_id', user?.id || '');
       
     if (activeChatsError) throw activeChatsError;
@@ -117,11 +115,11 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     const { count: abandonedCount } = await supabase
       .from('conversations')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'abandoned');
+      .eq('status', 'abandoned' as ConversationStatus);
     
     // Construct the return object to match what the components expect
     return {
-      activeChats: activeChatsCount || 0,
+      myActiveChats: activeChatsCount || 0,
       maxChats: 5, // Default maximum chats per agent
       waitingChats: conversationCount.waiting || 0,
       avgWaitTime: Math.round(averageWaitingTime * 10) / 10, // Round to 1 decimal
@@ -133,7 +131,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
   } catch (error) {
     console.error('Error fetching agent dashboard stats:', error);
     return {
-      activeChats: 0,
+      myActiveChats: 0,
       maxChats: 5,
       waitingChats: 0,
       avgWaitTime: 0,

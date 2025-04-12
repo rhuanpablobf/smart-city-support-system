@@ -6,7 +6,7 @@ import { fetchAgentDashboardStats, AgentDashboardStats } from '@/services/agent'
 export const useAgentDashboard = () => {
   const [agentStatus, setAgentStatus] = useState<'online' | 'offline' | 'break'>('online');
   const [stats, setStats] = useState<AgentDashboardStats>({
-    activeChats: 0,
+    myActiveChats: 0,
     maxChats: 5,
     waitingChats: 0,
     avgWaitTime: 0,

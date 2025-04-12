@@ -20,10 +20,10 @@ const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
             <div className="mr-4 rounded-full bg-blue-100 p-2">
               <UserCheck className="h-5 w-5 text-blue-600" />
             </div>
-            <div className="text-2xl font-bold">{stats.activeChats} / {stats.maxChats}</div>
+            <div className="text-2xl font-bold">{stats.myActiveChats} / {stats.maxChats}</div>
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            Capacidade atual de {stats.maxChats > 0 ? Math.round((stats.activeChats / stats.maxChats * 100)) : 0}%
+            Capacidade atual de {stats.maxChats > 0 ? Math.round((stats.myActiveChats / stats.maxChats * 100)) : 0}%
           </p>
         </CardContent>
       </Card>
