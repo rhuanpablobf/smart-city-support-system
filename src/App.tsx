@@ -18,6 +18,7 @@ import ChatbotConfig from "./pages/ChatbotConfig";
 import ProfileSettings from "./pages/ProfileSettings";
 import UsersManagement from "./pages/UsersManagement";
 import Reports from "./pages/Reports";
+import ClientChat from "./pages/ClientChat";
 import { createDemoUsers } from "./utils/seedDemoUsers";
 
 // Create a client
@@ -38,6 +39,7 @@ const App = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
               <Route path="/" element={<Index />} />
+              <Route path="/chat" element={<ClientChat />} />
               
               <Route
                 path="/"

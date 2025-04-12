@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChatProvider } from '@/contexts/ChatContext';
 import ChatList from '@/components/chat/ChatList';
 import ChatInterface from '@/components/chat/ChatInterface';
@@ -16,21 +16,59 @@ import {
 import {
   UserCheck, 
   Clock, 
-  Users, 
-  MessageSquare, 
   CheckCircle2, 
   XCircle,
   AlertCircle
 } from 'lucide-react';
+import { fetchAgentDashboardStats, AgentDashboardStats } from '@/services/agentDashboardService';
+import { useToast } from '@/components/ui/use-toast';
 
 const AgentDashboard = () => {
   const [agentStatus, setAgentStatus] = useState<'online' | 'offline' | 'break'>('online');
+  const [stats, setStats] = useState<AgentDashboardStats>({
+    activeChats: 0,
+    maxChats: 5,
+    waitingChats: 0,
+    avgWaitTime: 0,
+    completedChats: 0,
+    completedChangePercent: 0,
+    abandonedChats: 0,
+    abandonedRate: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
   
-  const activeChats = 2;
-  const waitingChats = 1;
-  const maxChats = 5;
-  const completedChats = 12;
-  const abandonedChats = 3;
+  useEffect(() => {
+    const loadDashboardStats = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchAgentDashboardStats();
+        setStats(data);
+      } catch (error) {
+        console.error("Erro ao carregar estatísticas do painel:", error);
+        toast({
+          title: "Erro ao carregar dados",
+          description: "Não foi possível carregar as estatísticas do painel. Tente novamente.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadDashboardStats();
+    
+    // Atualizar dados a cada 30 segundos
+    const interval = setInterval(loadDashboardStats, 30000);
+    
+    return () => clearInterval(interval);
+  }, [toast]);
+  
+  // Função para quando o agente atualiza seu status
+  const updateAgentStatus = async (value: string) => {
+    setAgentStatus(value as 'online' | 'offline' | 'break');
+    // Implementar integração com o banco de dados para atualizar o status do agente
+  };
   
   return (
     <ChatProvider>
@@ -45,9 +83,11 @@ const AgentDashboard = () => {
                 <div className="mr-4 rounded-full bg-blue-100 p-2">
                   <UserCheck className="h-5 w-5 text-blue-600" />
                 </div>
-                <div className="text-2xl font-bold">{activeChats} / {maxChats}</div>
+                <div className="text-2xl font-bold">{stats.activeChats} / {stats.maxChats}</div>
               </div>
-              <p className="mt-2 text-xs text-gray-500">Capacidade atual de {(activeChats / maxChats * 100).toFixed(0)}%</p>
+              <p className="mt-2 text-xs text-gray-500">
+                Capacidade atual de {stats.maxChats > 0 ? Math.round((stats.activeChats / stats.maxChats * 100)) : 0}%
+              </p>
             </CardContent>
           </Card>
           
@@ -60,9 +100,11 @@ const AgentDashboard = () => {
                 <div className="mr-4 rounded-full bg-yellow-100 p-2">
                   <Clock className="h-5 w-5 text-yellow-600" />
                 </div>
-                <div className="text-2xl font-bold">{waitingChats}</div>
+                <div className="text-2xl font-bold">{stats.waitingChats}</div>
               </div>
-              <p className="mt-2 text-xs text-gray-500">Tempo médio de espera: 5 min</p>
+              <p className="mt-2 text-xs text-gray-500">
+                Tempo médio de espera: {stats.avgWaitTime} min
+              </p>
             </CardContent>
           </Card>
 
@@ -75,9 +117,11 @@ const AgentDashboard = () => {
                 <div className="mr-4 rounded-full bg-green-100 p-2">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
-                <div className="text-2xl font-bold">{completedChats}</div>
+                <div className="text-2xl font-bold">{stats.completedChats}</div>
               </div>
-              <p className="mt-2 text-xs text-gray-500">+8 desde ontem</p>
+              <p className="mt-2 text-xs text-gray-500">
+                {stats.completedChangePercent >= 0 ? '+' : ''}{stats.completedChangePercent}% desde ontem
+              </p>
             </CardContent>
           </Card>
           
@@ -90,9 +134,9 @@ const AgentDashboard = () => {
                 <div className="mr-4 rounded-full bg-red-100 p-2">
                   <XCircle className="h-5 w-5 text-red-600" />
                 </div>
-                <div className="text-2xl font-bold">{abandonedChats}</div>
+                <div className="text-2xl font-bold">{stats.abandonedChats}</div>
               </div>
-              <p className="mt-2 text-xs text-gray-500">Taxa: {(abandonedChats / (abandonedChats + completedChats) * 100).toFixed(0)}%</p>
+              <p className="mt-2 text-xs text-gray-500">Taxa: {stats.abandonedRate}%</p>
             </CardContent>
           </Card>
         </div>
@@ -102,7 +146,7 @@ const AgentDashboard = () => {
             <h2 className="font-semibold">Seu Status:</h2>
             <Select
               value={agentStatus}
-              onValueChange={(value: any) => setAgentStatus(value)}
+              onValueChange={updateAgentStatus}
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />
@@ -144,7 +188,7 @@ const AgentDashboard = () => {
               <CardTitle className="text-base font-medium flex items-center justify-between">
                 <span>Conversas</span>
                 <Badge variant="outline" className="ml-2 bg-blue-100 text-blue-800 border-blue-200">
-                  {activeChats + waitingChats}
+                  {stats.activeChats + stats.waitingChats}
                 </Badge>
               </CardTitle>
             </CardHeader>

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useChat } from '@/contexts/ChatContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -10,14 +10,100 @@ import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { fetchAgentConversations, acceptWaitingConversation } from '@/services/agentDashboardService';
+import { useToast } from '@/components/ui/use-toast';
 
 const ChatList = () => {
-  const { conversations, currentConversation, selectConversation, startNewChat } = useChat();
+  const { 
+    conversations, 
+    setConversations,
+    currentConversation, 
+    selectConversation, 
+    startNewChat 
+  } = useChat();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Carregar conversas do banco de dados
+  useEffect(() => {
+    const loadConversations = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchAgentConversations();
+        
+        // Atualizar o contexto de chat com as conversas carregadas
+        setConversations({
+          active: data.active,
+          waiting: data.waiting,
+          bot: data.bot
+        });
+      } catch (error) {
+        console.error("Erro ao carregar conversas:", error);
+        toast({
+          title: "Erro ao carregar conversas",
+          description: "Não foi possível carregar as conversas. Tente novamente.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadConversations();
+    
+    // Atualizar conversas a cada 10 segundos
+    const interval = setInterval(loadConversations, 10000);
+    
+    return () => clearInterval(interval);
+  }, [toast, setConversations]);
+
+  // Filtrar conversas com base no termo de pesquisa
+  const filterConversations = (convs: any[]) => {
+    if (!searchTerm) return convs;
+    
+    return convs.filter(c => 
+      c.userCpf?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.departmentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.serviceName?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  // Aceitar uma conversa em espera
+  const handleAcceptWaiting = async (conversationId: string) => {
+    try {
+      await acceptWaitingConversation(conversationId);
+      
+      // Recarregar conversas para refletir a mudança
+      const data = await fetchAgentConversations();
+      setConversations({
+        active: data.active,
+        waiting: data.waiting,
+        bot: data.bot
+      });
+      
+      // Selecionar a conversa aceita
+      selectConversation(conversationId);
+      
+      toast({
+        title: "Conversa aceita",
+        description: "Você está agora atendendo esta conversa.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Erro ao aceitar conversa:", error);
+      toast({
+        title: "Erro ao aceitar conversa",
+        description: "Não foi possível aceitar a conversa. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  };
 
   // Filter conversations based on status
-  const activeConversations = conversations.filter(c => c.status === 'active');
-  const waitingConversations = conversations.filter(c => c.status === 'waiting');
-  const botConversations = conversations.filter(c => c.status === 'bot');
+  const activeConversations = filterConversations(conversations.active || []);
+  const waitingConversations = filterConversations(conversations.waiting || []);
+  const botConversations = filterConversations(conversations.bot || []);
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-white">
@@ -27,6 +113,8 @@ const ChatList = () => {
           <Input 
             placeholder="Buscar conversa..." 
             className="h-9 pl-9" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <Button 
@@ -89,6 +177,8 @@ const ChatList = () => {
             conversations={waitingConversations}
             currentConversation={currentConversation}
             onSelectConversation={selectConversation}
+            onAcceptWaiting={handleAcceptWaiting}
+            showAcceptButton={true}
           />
         </TabsContent>
         
@@ -100,6 +190,12 @@ const ChatList = () => {
           />
         </TabsContent>
       </Tabs>
+      
+      {loading && (
+        <div className="p-2 text-center text-gray-500 text-xs bg-gray-50">
+          Atualizando conversas...
+        </div>
+      )}
     </div>
   );
 };
@@ -108,9 +204,17 @@ interface ConversationListProps {
   conversations: any[];
   currentConversation: any;
   onSelectConversation: (id: string) => void;
+  onAcceptWaiting?: (id: string) => void;
+  showAcceptButton?: boolean;
 }
 
-const ConversationList = ({ conversations, currentConversation, onSelectConversation }: ConversationListProps) => {
+const ConversationList = ({ 
+  conversations, 
+  currentConversation, 
+  onSelectConversation,
+  onAcceptWaiting,
+  showAcceptButton
+}: ConversationListProps) => {
   if (conversations.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -124,7 +228,6 @@ const ConversationList = ({ conversations, currentConversation, onSelectConversa
       {conversations.map((conversation) => (
         <div
           key={conversation.id}
-          onClick={() => onSelectConversation(conversation.id)}
           className={cn(
             "p-3 hover:bg-gray-50 cursor-pointer",
             currentConversation?.id === conversation.id ? "bg-gray-100" : ""
@@ -141,7 +244,7 @@ const ConversationList = ({ conversations, currentConversation, onSelectConversa
               </AvatarFallback>
             </Avatar>
             
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0" onClick={() => onSelectConversation(conversation.id)}>
               <div className="flex items-center justify-between">
                 <p className="font-medium truncate">
                   {`CPF: ${conversation.userCpf}`}
@@ -156,23 +259,30 @@ const ConversationList = ({ conversations, currentConversation, onSelectConversa
               
               <div className="flex justify-between items-center">
                 <p className="truncate text-sm text-gray-500">
-                  {conversation.departmentId ? `${conversation.departmentId}` : 'Departamento não definido'}
-                  {conversation.serviceId ? ` - ${conversation.serviceId}` : ''}
+                  {conversation.departmentName || 'Departamento não definido'}
+                  {conversation.serviceName ? ` - ${conversation.serviceName}` : ''}
                 </p>
                 
-                {conversation.status === 'waiting' && (
-                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-                    Aguardando
-                  </Badge>
-                )}
-                {conversation.status === 'active' && (
-                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                    Em atendimento
-                  </Badge>
-                )}
-                {conversation.status === 'bot' && (
-                  <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">
-                    Bot
+                {conversation.status === 'waiting' && showAcceptButton && onAcceptWaiting ? (
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    className="text-xs h-7 bg-green-100 text-green-800 border-green-200 hover:bg-green-200 hover:text-green-900"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAcceptWaiting(conversation.id);
+                    }}
+                  >
+                    Aceitar
+                  </Button>
+                ) : (
+                  <Badge variant="outline" className={cn(
+                    conversation.status === 'waiting' ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
+                    conversation.status === 'active' ? "bg-green-100 text-green-800 border-green-200" :
+                    "bg-purple-100 text-purple-800 border-purple-200"
+                  )}>
+                    {conversation.status === 'waiting' ? 'Aguardando' : 
+                     conversation.status === 'active' ? 'Em atendimento' : 'Bot'}
                   </Badge>
                 )}
               </div>
