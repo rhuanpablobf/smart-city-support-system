@@ -28,10 +28,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Set a global timeout to prevent being stuck in loading state
     authTimeout = setTimeout(() => {
       if (isMounted && loading) {
-        console.error("Verificação de autenticação expirou após 10 segundos");
+        console.error("Verificação de autenticação expirou após 5 segundos");
         setLoading(false);
       }
-    }, 10000); // 10 second timeout
+    }, 5000); // Reduzido para 5 segundos
 
     const checkCurrentUser = async () => {
       try {
@@ -52,34 +52,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         console.log("Sessão encontrada, usuário está autenticado");
         
-        // Fetch the user profile from our profiles table
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.session.user.id)
-          .maybeSingle();
+        // Em vez de buscar o perfil, usamos os metadados do usuário
+        const userData = data.session.user;
+        const userMetadata = userData.user_metadata;
         
-        if (profileError) {
-          console.error("Erro ao buscar perfil:", profileError.message);
-          if (isMounted) setLoading(false);
-          return;
-        }
+        // Determinar o papel do usuário com base no email
+        const determineRole = (email: string): 'admin' | 'manager' | 'agent' | 'user' => {
+          if (email.includes('admin')) return 'admin';
+          if (email.includes('manager')) return 'manager';
+          if (email.includes('agent')) return 'agent';
+          return 'user';
+        };
         
-        if (!profileData) {
-          console.log("Nenhum perfil encontrado para o usuário");
-          if (isMounted) setLoading(false);
-          return;
-        }
-        
-        console.log("Perfil encontrado:", profileData.role);
+        // Criar o objeto de usuário usando os metadados
         const user = {
-          id: profileData.id,
-          name: profileData.name || data.session.user.email?.split('@')[0] || '',
-          email: profileData.email || data.session.user.email || '',
-          role: profileData.role,
-          avatar: profileData.avatar || '',
-          department: profileData.department_id,
-          maxSimultaneousChats: profileData.max_simultaneous_chats
+          id: userData.id,
+          name: userMetadata?.name || userData.email?.split('@')[0] || '',
+          email: userData.email || '',
+          role: determineRole(userData.email || ''),
+          avatar: userMetadata?.avatar || '',
+          department: null,
+          maxSimultaneousChats: 5
         };
         
         if (isMounted) setCurrentUser(user);

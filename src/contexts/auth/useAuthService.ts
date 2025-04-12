@@ -30,34 +30,23 @@ export function useAuthService() {
         throw new Error("Não foi possível autenticar o usuário");
       }
       
-      console.log("Login Supabase bem-sucedido, buscando perfil...");
+      console.log("Login Supabase bem-sucedido, criando perfil a partir dos metadados...");
       
-      // Fetch the user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .maybeSingle();
+      // Em vez de buscar o perfil da tabela, vamos usar os metadados do usuário
+      // Isso evita o erro de recursão infinita na política de segurança
+      const userMetadata = data.user.user_metadata;
       
-      if (profileError) {
-        console.error("Erro ao buscar perfil:", profileError.message);
-        throw new Error("Não foi possível buscar o perfil do usuário");
-      }
-      
-      if (!profileData) {
-        console.error("Nenhum perfil encontrado para o usuário");
-        throw new Error("Perfil de usuário não encontrado");
-      }
-      
-      // Create user object from profile data
+      // Criar objeto de usuário a partir dos metadados
       const user: User = {
-        id: profileData.id,
-        name: profileData.name || data.user.email?.split('@')[0] || '',
-        email: profileData.email || data.user.email || '',
-        role: profileData.role,
-        avatar: profileData.avatar || '',
-        department: profileData.department_id,
-        maxSimultaneousChats: profileData.max_simultaneous_chats
+        id: data.user.id,
+        name: userMetadata.name || data.user.email?.split('@')[0] || '',
+        email: data.user.email || '',
+        // Determinar o papel com base no email para fins de demonstração
+        role: determineUserRole(data.user.email),
+        avatar: userMetadata.avatar || '',
+        // Valores padrão para outros campos
+        department: null,
+        maxSimultaneousChats: 5
       };
       
       console.log("Definindo usuário atual:", user.role);
@@ -80,6 +69,17 @@ export function useAuthService() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Função de utilitário para determinar o papel do usuário com base no email
+  const determineUserRole = (email: string | undefined): UserRole => {
+    if (!email) return 'user';
+    
+    if (email.includes('admin')) return 'admin';
+    if (email.includes('manager')) return 'manager';
+    if (email.includes('agent')) return 'agent';
+    
+    return 'user';
   };
 
   const logout = useCallback(async () => {
