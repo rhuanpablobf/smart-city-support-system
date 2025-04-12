@@ -19,23 +19,15 @@ const Reports = () => {
   const [filterApplied, setFilterApplied] = useState(false);
   const { toast } = useToast();
   
-  // Aplicar filtros quando os valores mudam (exceto para período personalizado)
+  // Apply filters when values change (except for custom period)
   useEffect(() => {
     if (period !== 'custom') {
       handleApplyFilters();
     }
   }, [period, department, service]);
 
-  // Limpar datas quando o período não for personalizado
-  useEffect(() => {
-    if (period !== 'custom') {
-      setStartDate(undefined);
-      setEndDate(undefined);
-    }
-  }, [period]);
-
   const handleApplyFilters = () => {
-    // Validar datas para período personalizado
+    // Validate dates for custom period
     if (period === 'custom' && (!startDate || !endDate)) {
       toast({
         title: "Período incompleto",
@@ -47,7 +39,7 @@ const Reports = () => {
 
     setFilterApplied(true);
     
-    // Aqui você pode implementar a lógica para atualizar os dados dos relatórios
+    // Here you can implement logic to update the reports data
     console.log('Filtros aplicados:', { period, department, service, startDate, endDate });
   };
 
