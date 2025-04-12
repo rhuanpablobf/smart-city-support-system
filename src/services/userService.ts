@@ -10,7 +10,7 @@ export const fetchUsers = async (): Promise<User[]> => {
   try {
     // Using RPC to avoid infinite recursion in RLS policies
     const { data, error } = await supabase.rpc(
-      'get_all_profiles_safe'
+      'get_all_profiles_safe' as any
     ) as { data: any[], error: any };
 
     if (error) {
@@ -88,7 +88,7 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
     
     // Insert profile in profiles table via RPC to avoid recursion issues
     const { error } = await supabase.rpc(
-      // Type assertion to inform TypeScript this is an allowed function name
+      // Add 'as any' type assertion to fix the TypeScript error
       'insert_profile' as any, 
       {
         profile_id: uuid,
@@ -118,7 +118,7 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
       
       // Use RPC function to insert data
       const { error: servicesError } = await supabase.rpc(
-        'insert_agent_services', 
+        'insert_agent_services' as any, 
         { services: agentServicesData }
       );
         
@@ -181,7 +181,7 @@ export const updateUser = async (userId: string, userData: UserFormValues): Prom
     
     // Update profile via RPC to avoid recursion issues
     const { error } = await supabase.rpc(
-      // Type assertion to inform TypeScript this is an allowed function name
+      // Add 'as any' type assertion to fix the TypeScript error
       'update_profile' as any,
       {
         profile_id: userId,
@@ -202,7 +202,7 @@ export const updateUser = async (userId: string, userData: UserFormValues): Prom
     if (userData.role === 'agent' || userData.role === 'manager') {
       // Remove existing associations using RPC
       const { error: deleteError } = await supabase
-        .rpc('delete_agent_services', { agent_id_param: userId });
+        .rpc('delete_agent_services' as any, { agent_id_param: userId });
         
       if (deleteError) {
         console.error("Error removing agent services:", deleteError);
@@ -218,7 +218,7 @@ export const updateUser = async (userId: string, userData: UserFormValues): Prom
         
         // Use RPC to insert new services
         const { error: insertError } = await supabase
-          .rpc('insert_agent_services', { 
+          .rpc('insert_agent_services' as any, { 
             services: agentServicesData 
           });
           
