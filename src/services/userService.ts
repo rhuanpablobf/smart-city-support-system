@@ -11,7 +11,7 @@ export const fetchUsers = async (): Promise<User[]> => {
     // Usando RPC para evitar recursão infinita nas políticas RLS
     const { data, error } = await supabase.rpc(
       'get_all_profiles_safe'
-    );
+    ) as { data: any[], error: any };
 
     if (error) {
       console.error('Erro ao buscar perfis:', error.message);
