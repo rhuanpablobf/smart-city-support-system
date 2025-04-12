@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agent_services: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          service_id: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          service_id: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_services_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_statuses: {
         Row: {
           active_chats: number

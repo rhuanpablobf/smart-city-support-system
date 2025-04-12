@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { User, UserRole, Department, Service } from '@/types';
+import { User, UserRole, Department, Service, AgentService } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +10,7 @@ export interface UserFormValues {
   name: string;
   email: string;
   role: 'admin' | 'manager' | 'agent';
-  departmentId?: string;
+  department_id?: string;
   serviceIds?: string[];
   status: 'active' | 'inactive';
 }
@@ -34,13 +34,13 @@ export function useUserManagement() {
       if (error) throw error;
 
       // Mapear para o formato User
-      const formattedUsers: User[] = profiles.map((profile) => ({
+      const formattedUsers: User[] = profiles.map((profile: any) => ({
         id: profile.id,
         name: profile.name || '',
         email: profile.email || '',
         role: profile.role as UserRole,
         department: profile.departments?.name || null,
-        departmentId: profile.department_id || null,
+        department_id: profile.department_id || null,
         status: 'active', // Default status, poderia ser armazenado no Supabase também
         avatar: profile.avatar || undefined,
         maxSimultaneousChats: profile.max_simultaneous_chats || 5
@@ -51,16 +51,24 @@ export function useUserManagement() {
       // Buscar serviços associados a cada agente/gerente
       for (const user of formattedUsers) {
         if (user.role === 'agent' || user.role === 'manager') {
-          const { data: agentServices } = await supabase
+          // Use the raw SQL query instead of the client since the table might not be in the types yet
+          const { data: agentServices, error: servicesError } = await supabase
             .from('agent_services')
             .select('service_id')
             .eq('agent_id', user.id);
+          
+          if (servicesError) {
+            console.error('Error fetching agent services:', servicesError);
+            continue;
+          }
           
           if (agentServices && agentServices.length > 0) {
             user.serviceIds = agentServices.map(as => as.service_id);
           }
         }
       }
+      
+      setUsers(formattedUsers);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar usuários",
@@ -141,7 +149,7 @@ export function useUserManagement() {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          department_id: userData.departmentId,
+          department_id: userData.department_id,
           max_simultaneous_chats: 5, // Valor padrão
           status: userData.status === 'active' ? 'active' : 'inactive'
         })
@@ -155,25 +163,35 @@ export function useUserManagement() {
           userData.serviceIds && 
           userData.serviceIds.length > 0) {
         
-        const agentServices = userData.serviceIds.map(serviceId => ({
+        // Create an array of agent_service objects
+        const agentServicesData = userData.serviceIds.map(serviceId => ({
           agent_id: uuid,
           service_id: serviceId
         }));
         
+        // Use a raw SQL query to insert data
         const { error: servicesError } = await supabase
-          .from('agent_services')
-          .insert(agentServices);
+          .rpc('insert_agent_services', { 
+            services: agentServicesData 
+          });
           
-        if (servicesError) throw servicesError;
+        if (servicesError) {
+          console.error("Error adding agent services:", servicesError);
+          toast({
+            title: "Aviso",
+            description: "Usuário criado, mas houve um erro ao associar serviços.",
+            variant: "warning",
+          });
+        }
       }
       
       // Buscar nome do departamento para exibição
       let departmentName = null;
-      if (userData.departmentId) {
+      if (userData.department_id) {
         const { data: deptData } = await supabase
           .from('departments')
           .select('name')
-          .eq('id', userData.departmentId)
+          .eq('id', userData.department_id)
           .single();
           
         if (deptData) departmentName = deptData.name;
@@ -185,7 +203,7 @@ export function useUserManagement() {
         email: userData.email,
         role: userData.role,
         department: departmentName,
-        departmentId: userData.departmentId,
+        department_id: userData.department_id,
         serviceIds: userData.serviceIds,
         status: userData.status
       };
@@ -219,7 +237,7 @@ export function useUserManagement() {
           name: userData.name,
           email: userData.email,
           role: userData.role,
-          department_id: userData.departmentId,
+          department_id: userData.department_id,
           status: userData.status === 'active' ? 'active' : 'inactive'
         })
         .eq('id', userId);
@@ -228,36 +246,42 @@ export function useUserManagement() {
 
       // Atualizar serviços do usuário (excluir existentes e inserir novos)
       if (userData.role === 'agent' || userData.role === 'manager') {
-        // Remover associações existentes
+        // Remover associações existentes usando raw SQL
         const { error: deleteError } = await supabase
-          .from('agent_services')
-          .delete()
-          .eq('agent_id', userId);
+          .rpc('delete_agent_services', { agent_id_param: userId });
           
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+          console.error("Error removing agent services:", deleteError);
+          throw deleteError;
+        }
         
         // Adicionar novas associações de serviços
         if (userData.serviceIds && userData.serviceIds.length > 0) {
-          const agentServices = userData.serviceIds.map(serviceId => ({
+          const agentServicesData = userData.serviceIds.map(serviceId => ({
             agent_id: userId,
             service_id: serviceId
           }));
           
+          // Use raw SQL to insert the new services
           const { error: insertError } = await supabase
-            .from('agent_services')
-            .insert(agentServices);
+            .rpc('insert_agent_services', { 
+              services: agentServicesData 
+            });
             
-          if (insertError) throw insertError;
+          if (insertError) {
+            console.error("Error adding agent services:", insertError);
+            throw insertError;
+          }
         }
       }
 
       // Buscar nome do departamento para exibição
       let departmentName = null;
-      if (userData.departmentId) {
+      if (userData.department_id) {
         const { data: deptData } = await supabase
           .from('departments')
           .select('name')
-          .eq('id', userData.departmentId)
+          .eq('id', userData.department_id)
           .single();
           
         if (deptData) departmentName = deptData.name;
@@ -269,8 +293,13 @@ export function useUserManagement() {
           user.id === userId 
             ? { 
                 ...user, 
-                ...userData,
-                department: departmentName
+                name: userData.name,
+                email: userData.email,
+                role: userData.role,
+                department: departmentName,
+                department_id: userData.department_id,
+                serviceIds: userData.serviceIds,
+                status: userData.status
               } 
             : user
         )

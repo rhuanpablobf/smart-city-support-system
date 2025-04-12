@@ -15,7 +15,7 @@ const userFormSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
   role: z.enum(['admin', 'manager', 'agent'] as const),
-  departmentId: z.string().optional(),
+  department_id: z.string().optional(),
   serviceIds: z.array(z.string()).optional(),
   status: z.enum(['active', 'inactive'] as const)
 });
@@ -43,7 +43,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
 }) => {
   const isEditing = !!user;
   const [selectedRole, setSelectedRole] = useState<string>(user?.role || 'agent');
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>(user?.departmentId);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>(user?.department_id);
   const [availableServices, setAvailableServices] = useState<Service[]>([]);
 
   const form = useForm<UserFormValues>({
@@ -52,14 +52,14 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
       name: user.name,
       email: user.email,
       role: user.role !== 'user' ? user.role : 'agent',
-      departmentId: user.departmentId,
+      department_id: user.department_id,
       serviceIds: user.serviceIds || [],
       status: user.status || 'active'
     } : {
       name: '',
       email: '',
       role: 'agent',
-      departmentId: '',
+      department_id: '',
       serviceIds: [],
       status: 'active'
     }
@@ -69,7 +69,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
   useEffect(() => {
     if (selectedDepartmentId) {
       const filteredServices = services.filter(
-        service => service.departmentId === selectedDepartmentId
+        service => service.department_id === selectedDepartmentId
       );
       setAvailableServices(filteredServices);
     } else {
@@ -83,8 +83,8 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
       if (name === 'role') {
         setSelectedRole(value.role || 'agent');
       }
-      if (name === 'departmentId') {
-        setSelectedDepartmentId(value.departmentId);
+      if (name === 'department_id') {
+        setSelectedDepartmentId(value.department_id);
       }
     });
     
@@ -99,7 +99,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
   // Determine which departments are available based on current user role
   const getAvailableDepartments = () => {
     // If current user is super admin, all departments are available
-    if (currentUserRole === 'admin' && !user?.departmentId) {
+    if (currentUserRole === 'admin' && !user?.department_id) {
       return departments;
     }
     
@@ -213,7 +213,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
             {/* Department selection based on role */}
             <FormField
               control={form.control}
-              name="departmentId"
+              name="department_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Secretaria (Departamento)</FormLabel>

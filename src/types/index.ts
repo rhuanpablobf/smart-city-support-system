@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'manager' | 'agent' | 'user';
 
 export interface User {
@@ -7,7 +8,7 @@ export interface User {
   role: UserRole;
   avatar?: string;
   department?: string;
-  departmentId?: string;
+  department_id?: string; // Changed to match DB column name
   serviceIds?: string[];
   status: 'active' | 'inactive';
   maxSimultaneousChats?: number;
@@ -41,7 +42,7 @@ export interface Department {
 
 export interface Service {
   id: string;
-  departmentId: string;
+  department_id: string; // Changed to match DB column name
   name: string;
   description: string;
 }
@@ -83,8 +84,9 @@ export interface SatisfactionSurvey {
 }
 
 export interface AgentService {
-  agentId: string;
-  serviceId: string;
+  id?: string;
+  agent_id: string;
+  service_id: string;
 }
 
 export interface QAItem {
