@@ -30,27 +30,33 @@ export function useAuthService() {
         throw new Error("Não foi possível autenticar o usuário");
       }
       
-      console.log("Login Supabase bem-sucedido, criando perfil a partir dos metadados...");
+      console.log("Login Supabase bem-sucedido, buscando perfil do usuário...");
       
-      // Em vez de buscar o perfil da tabela, vamos usar os metadados do usuário
-      // Isso evita o erro de recursão infinita na política de segurança
-      const userMetadata = data.user.user_metadata;
+      // Buscar perfil do usuário após autenticação
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
       
-      // Criar objeto de usuário a partir dos metadados
+      if (profileError) {
+        console.error("Erro ao buscar perfil:", profileError);
+      }
+      
+      // Criar objeto de usuário a partir dos metadados e dados do perfil
       const user: User = {
         id: data.user.id,
-        name: userMetadata.name || data.user.email?.split('@')[0] || '',
+        name: profileData?.name || data.user.email?.split('@')[0] || '',
         email: data.user.email || '',
-        // Determinar o papel com base no email para fins de demonstração
-        role: determineUserRole(data.user.email),
-        avatar: userMetadata.avatar || '',
-        // Valores padrão para outros campos
+        role: profileData?.role || determineUserRole(data.user.email),
+        avatar: profileData?.avatar || '',
         department: null,
-        status: 'active' as const, // Use const assertion
-        maxSimultaneousChats: 5
+        department_id: profileData?.department_id || null,
+        status: profileData?.status as 'active' | 'inactive' || 'active',
+        maxSimultaneousChats: profileData?.max_simultaneous_chats || 5
       };
       
-      console.log("Definindo usuário atual:", user.role);
+      console.log("Definindo usuário atual:", user);
       setCurrentUser(user);
       
       toast({

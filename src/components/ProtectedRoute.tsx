@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { UserRole } from '@/types';
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from 'lucide-react';
@@ -12,10 +12,14 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { isAuthenticated, loading, hasPermission, logout } = useAuth();
+  const { isAuthenticated, loading, hasPermission, logout, currentUser } = useAuth();
   const location = useLocation();
   const { toast } = useToast();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  useEffect(() => {
+    console.log("ProtectedRoute - currentUser:", currentUser);
+  }, [currentUser]);
   
   // Add safety timeout to prevent infinite loading
   useEffect(() => {
@@ -65,7 +69,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
 
   if (requiredRole && !hasPermission(requiredRole)) {
     // Redirecionar para página não autorizada se o usuário não tiver a função necessária
-    console.log("Usuário não possui o papel necessário:", requiredRole);
+    console.log("Usuário não possui o papel necessário:", requiredRole, "papel atual:", currentUser?.role);
     return <Navigate to="/unauthorized" replace />;
   }
 

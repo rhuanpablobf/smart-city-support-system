@@ -8,24 +8,27 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export const fetchUsers = async (): Promise<User[]> => {
   try {
-    // Usando a nova política RLS, isso só funcionará para administradores
-    // ou retornará apenas o próprio perfil do usuário para não-administradores
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('*, departments:department_id(id, name, description)');
+    // Usando RPC para evitar recursão infinita nas políticas RLS
+    const { data, error } = await supabase.rpc(
+      'get_all_profiles_safe'
+    );
 
     if (error) {
       console.error('Erro ao buscar perfis:', error.message);
       throw error;
     }
 
+    if (!data) {
+      return [];
+    }
+
     // Map to the format User
-    const formattedUsers: User[] = profiles.map((profile: any) => ({
+    const formattedUsers: User[] = data.map((profile: any) => ({
       id: profile.id,
       name: profile.name || '',
       email: profile.email || '',
       role: profile.role,
-      department: profile.departments?.name || null,
+      department: profile.department_name || null,
       department_id: profile.department_id || null,
       status: profile.status || 'active', // Usar o valor do banco ou 'active' como fallback
       avatar: profile.avatar || undefined,
