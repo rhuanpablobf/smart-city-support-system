@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { User, Department, Service } from '@/types';
+import { User, Department, Service, UserFormValues as UserValues } from '@/types';
 import { useForm } from 'react-hook-form';
 import { Form } from '@/components/ui/form';
 import { z } from 'zod';
@@ -14,10 +14,12 @@ const userFormSchema = z.object({
   role: z.enum(['admin', 'manager', 'agent'] as const),
   department_id: z.string().optional(),
   serviceIds: z.array(z.string()).optional(),
-  status: z.enum(['active', 'inactive'] as const)
+  status: z.enum(['active', 'inactive'] as const),
+  maxSimultaneousChats: z.number().min(1, 'Deve ser pelo menos 1').default(5)
 });
 
-export type UserFormValues = z.infer<typeof userFormSchema>;
+// Match with the type from @/types to ensure compatibility
+export type UserFormValues = UserValues;
 
 interface UserFormDialogProps {
   open: boolean;
@@ -51,7 +53,8 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
       role: 'agent',
       department_id: '',
       serviceIds: [],
-      status: 'active'
+      status: 'active',
+      maxSimultaneousChats: 5
     }
   });
 
@@ -66,7 +69,8 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
           role: user.role !== 'user' ? user.role : 'agent',
           department_id: user.department_id || '',
           serviceIds: user.serviceIds || [],
-          status: user.status || 'active'
+          status: user.status || 'active',
+          maxSimultaneousChats: user.maxSimultaneousChats || 5
         });
         setSelectedRole(user.role);
         setSelectedDepartmentId(user.department_id);
@@ -80,7 +84,8 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
           role: 'agent',
           department_id: '',
           serviceIds: [],
-          status: 'active'
+          status: 'active',
+          maxSimultaneousChats: 5
         });
         setSelectedRole('agent');
         setSelectedDepartmentId(undefined);
