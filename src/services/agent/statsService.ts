@@ -1,6 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays } from 'date-fns';
+// Updated import approach for date-fns
+import { format as formatDate, subDays } from 'date-fns';
 
 export interface AgentDashboardStats {
   activeChats: number;
@@ -65,8 +66,8 @@ export const fetchAgentDashboardStats = async (agentId?: string): Promise<AgentD
     
     // Data para comparar com o dia anterior
     const today = new Date();
-    const yesterday = format(subDays(today, 1), 'yyyy-MM-dd');
-    const todayStr = format(today, 'yyyy-MM-dd');
+    const yesterday = formatDate(subDays(today, 1), 'yyyy-MM-dd');
+    const todayStr = formatDate(today, 'yyyy-MM-dd');
     
     // Buscar conversas completadas hoje
     const { data: completedToday, error: completedError } = await supabase
