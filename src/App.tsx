@@ -13,6 +13,11 @@ import NotFound from "./pages/NotFound";
 import Unauthorized from "./pages/Unauthorized";
 import AgentDashboard from "./pages/AgentDashboard";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
+import ChatbotConfig from "./pages/ChatbotConfig";
+import ProfileSettings from "./pages/ProfileSettings";
+import UsersManagement from "./pages/UsersManagement";
+import Reports from "./pages/Reports";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +48,56 @@ const App = () => (
                     <ProtectedRoute requiredRole="agent">
                       <AgentDashboard />
                     </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="dashboard"
+                  element={
+                    <ProtectedRoute requiredRole="manager">
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="chatbot"
+                  element={
+                    <ProtectedRoute requiredRole="manager">
+                      <ChatbotConfig />
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="users"
+                  element={
+                    <ProtectedRoute requiredRole="admin">
+                      <UsersManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="reports"
+                  element={
+                    <ProtectedRoute requiredRole="manager">
+                      <Reports />
+                    </ProtectedRoute>
+                  }
+                />
+                
+                <Route
+                  path="profile"
+                  element={
+                    <ProfileSettings />
+                  }
+                />
+                
+                <Route
+                  path="settings"
+                  element={
+                    <ProfileSettings />
                   }
                 />
               </Route>
