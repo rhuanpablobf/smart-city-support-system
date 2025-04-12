@@ -8,7 +8,7 @@ import {
   fetchDepartmentStats, 
   fetchDailyStats,
   fetchAgentPerformance 
-} from '@/services/dashboardService';
+} from '@/services/dashboard';
 import {
   ChartContainer,
   ChartTooltip,

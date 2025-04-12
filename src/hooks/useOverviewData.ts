@@ -1,6 +1,10 @@
 
 import { useState, useEffect } from 'react';
-import { fetchDashboardStats, fetchDepartmentStats, fetchDailyStats } from '@/services/dashboardService';
+import { 
+  fetchDashboardStats, 
+  fetchDepartmentStats, 
+  fetchDailyStats 
+} from '@/services/dashboard';
 import { useToast } from '@/components/ui/use-toast';
 
 export interface OverviewFilters {
