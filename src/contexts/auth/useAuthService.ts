@@ -32,12 +32,16 @@ export function useAuthService() {
       
       console.log("Login Supabase bem-sucedido, buscando perfil do usuário...");
       
-      // Buscar perfil do usuário após autenticação
+      // Buscar perfil do usuário após autenticação usando RPC
       const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
+        .rpc('get_all_profiles_safe')
+        .then(response => {
+          if (response.error) {
+            return { data: null, error: response.error };
+          }
+          const userProfile = response.data.find((profile: any) => profile.id === data.user?.id);
+          return { data: userProfile || null, error: null };
+        });
       
       if (profileError) {
         console.error("Erro ao buscar perfil:", profileError);
