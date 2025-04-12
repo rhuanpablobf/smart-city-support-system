@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/auth';
 
 const Unauthorized = () => {
   const navigate = useNavigate();
-  const { currentUser, userRole, isAuthenticated } = useAuth();
+  const { currentUser, userRole, isAuthenticated, logout } = useAuth();
   
   useEffect(() => {
     // Log diagnósticos para ajudar a depurar
@@ -22,6 +22,15 @@ const Unauthorized = () => {
     // Navegar diretamente para a página de login em vez da página inicial
     // para evitar loops de redirecionamento
     navigate('/login');
+  };
+  
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+    }
   };
   
   return (
@@ -50,6 +59,14 @@ const Unauthorized = () => {
             className="w-full bg-chatbot-primary hover:bg-chatbot-dark"
           >
             Voltar para a página de login
+          </Button>
+          
+          <Button
+            onClick={handleLogout}
+            variant="destructive"
+            className="w-full"
+          >
+            Sair / Deslogar
           </Button>
           
           {userRole === 'admin' && (

@@ -53,9 +53,11 @@ export function useAuthService() {
       // Se temos dados do perfil, usar o papel do perfil
       if (profileData && profileData.role) {
         userRole = profileData.role as UserRole;
+        console.log("Papel obtido do perfil:", userRole);
       } else {
         // Alternativa baseada no email (fallback)
         userRole = determineUserRole(data.user.email);
+        console.log("Papel determinado pelo email:", userRole);
       }
       
       console.log("Papel determinado:", userRole);
