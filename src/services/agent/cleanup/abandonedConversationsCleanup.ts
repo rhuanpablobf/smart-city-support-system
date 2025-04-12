@@ -1,47 +1,56 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { ConversationStatus } from '@/types';
 
-/**
- * Limpa conversas abandonadas em espera (sem atividade por mais de 3 minutos)
- * e registra como abandonadas para estatísticas
- */
-export const cleanAbandonedWaitingConversations = async () => {
+// Function to check and update abandoned conversations
+export const cleanupAbandonedConversations = async () => {
   try {
-    // Pegar timestamp de 3 minutos atrás
-    const thresholdTime = new Date();
-    thresholdTime.setMinutes(thresholdTime.getMinutes() - 3);
-    const thresholdTimeIso = thresholdTime.toISOString();
-    
-    // Buscar conversas inativas (sem mensagens recentes)
-    const { data: inactiveConversations, error } = await supabase
+    // Define the threshold for inactivity (e.g., 30 minutes)
+    const inactivityThreshold = 30 * 60 * 1000; // 30 minutes in milliseconds
+    const now = new Date();
+    const cutoff = new Date(now.getTime() - inactivityThreshold);
+
+    // Query for conversations that are active but have no recent messages
+    const { data: activeConversations, error } = await supabase
       .from('conversations')
-      .select('id')
-      .eq('status', 'waiting')
-      .lt('last_message_at', thresholdTimeIso);
-    
-    if (error) throw error;
-    
-    // Se não houver conversas abandonadas, encerre
-    if (!inactiveConversations || inactiveConversations.length === 0) {
+      .select('id, updated_at')
+      .eq('status', 'active')
+      .lt('updated_at', cutoff.toISOString());
+
+    if (error) {
+      console.error('Error fetching active conversations:', error);
       return;
     }
-    
-    console.log(`Encontradas ${inactiveConversations.length} conversas abandonadas`);
-    
-    // Registrar conversas abandonadas para estatísticas
-    const abandonedIds = inactiveConversations.map(conv => conv.id);
 
-    // Registrar o status de abandono nas conversas
-    const { error: updateError } = await supabase
-      .from('conversations')
-      .update({ status: 'abandoned' })
-      .in('id', abandonedIds);
-    
-    if (updateError) throw updateError;
-    
-    console.log(`${inactiveConversations.length} conversas marcadas como abandonadas`);
+    if (!activeConversations || activeConversations.length === 0) {
+      console.log('No abandoned conversations found.');
+      return;
+    }
+
+    // Process each abandoned conversation
+    for (const conversation of activeConversations) {
+      await updateConversationStatus(conversation.id);
+    }
   } catch (error) {
-    console.error("Erro ao limpar conversas abandonadas:", error);
-    throw error;
+    console.error('Error during abandoned conversations cleanup:', error);
   }
 };
+
+const updateConversationStatus = async (conversationId: string) => {
+  try {
+    // Update conversation status to abandoned
+    await supabase
+      .from('conversations')
+      .update({ 
+        status: 'abandoned' as ConversationStatus
+      })
+      .eq('id', conversationId);
+      
+    console.log(`Conversation ${conversationId} marked as abandoned due to inactivity`);
+  } catch (error) {
+    console.error(`Error updating conversation ${conversationId} status:`, error);
+  }
+};
+
+// Schedule the cleanup task (e.g., every hour)
+const interval = 60 * 60 * 1000; // 1 hour in milliseconds
+setInterval(cleanupAbandonedConversations, interval);

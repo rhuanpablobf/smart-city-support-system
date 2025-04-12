@@ -1,14 +1,14 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export interface ServiceAttendanceData {
+interface Service {
+  id: string;
   name: string;
-  value: number;
-  color: string;
+  attendances: number;
 }
 
-interface UseServiceAttendanceDataProps {
+interface ServiceAttendanceFilters {
   period: string;
   department: string;
   service: string;
@@ -16,90 +16,98 @@ interface UseServiceAttendanceDataProps {
   endDate?: Date;
 }
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#83a6ed', '#8dd1e1'];
+interface ServiceAttendanceData {
+  data: Service[];
+  loading: boolean;
+}
 
-export const useServiceAttendanceData = ({
-  period,
-  department,
-  service,
-  startDate,
-  endDate
-}: UseServiceAttendanceDataProps) => {
-  const [data, setData] = useState<ServiceAttendanceData[]>([]);
-  const [loading, setLoading] = useState(true);
+export const useServiceAttendanceData = (filters: ServiceAttendanceFilters): ServiceAttendanceData => {
+  const [data, setData] = useState<Service[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
+      
       try {
-        setLoading(true);
-        
-        // Calcular intervalo de datas com base no período
-        const now = new Date();
-        let fromDate = new Date();
-        
-        if (period === 'week') {
-          fromDate.setDate(now.getDate() - 7);
-        } else if (period === 'month') {
-          fromDate.setMonth(now.getMonth() - 1);
-        } else if (period === 'year') {
-          fromDate.setFullYear(now.getFullYear() - 1);
-        } else if (period === 'custom' && startDate && endDate) {
-          fromDate = startDate;
-        } else {
-          // Default: últimos 30 dias
-          fromDate.setDate(now.getDate() - 30);
-        }
-
-        // Construir a consulta inicial
+        // Base query for services
         let query = supabase
-          .from('conversations')
-          .select(`
-            service_id,
-            services(name),
-            count(*)
-          `)
-          .gte('created_at', fromDate.toISOString())
-          .lt('created_at', period === 'custom' && endDate ? new Date(endDate.getTime() + 86400000).toISOString() : now.toISOString())
-          .group('service_id, services(name)');
-
-        // Adicionar filtro de departamento se não for 'all'
-        if (department !== 'all') {
-          query = query.eq('department_id', department);
+          .from('services')
+          .select('id, name');
+          
+        // Apply department filter
+        if (filters.department && filters.department !== 'all') {
+          query = query.eq('department_id', filters.department);
         }
-
-        // Adicionar filtro de serviço se não for 'all'
-        if (service !== 'all') {
-          query = query.eq('service_id', service);
-        }
-
-        const { data: serviceData, error } = await query;
-
-        if (error) {
-          throw error;
-        }
-
-        // Transformar dados para o formato esperado pelo gráfico
-        const formattedData = (serviceData || []).map((item: any, index: number) => ({
-          name: item.services?.name || 'Desconhecido',
-          value: parseInt(item.count, 10),
-          color: COLORS[index % COLORS.length]
-        }));
-
-        setData(formattedData);
-        console.log("Dados de atendimentos por serviço:", formattedData);
+        
+        const { data: servicesData, error: servicesError } = await query;
+        
+        if (servicesError) throw servicesError;
+        
+        // For each service, count the number of attendances
+        const servicesWithAttendances = await Promise.all(
+          servicesData.map(async (service) => {
+            let countQuery = supabase
+              .from('conversations')
+              .select('id', { count: 'exact', head: true });
+              
+            // Filter by service
+            countQuery = countQuery.eq('service_id', service.id);
+            
+            // Apply date filters based on period
+            if (filters.period === 'custom' && filters.startDate && filters.endDate) {
+              const startDate = new Date(filters.startDate);
+              const endDate = new Date(filters.endDate);
+              
+              startDate.setHours(0, 0, 0, 0);
+              endDate.setHours(23, 59, 59, 999);
+              
+              countQuery = countQuery
+                .gte('created_at', startDate.toISOString())
+                .lte('created_at', endDate.toISOString());
+            } else if (filters.period === 'today') {
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              
+              countQuery = countQuery.gte('created_at', today.toISOString());
+            } else if (filters.period === 'week') {
+              const weekAgo = new Date();
+              weekAgo.setDate(weekAgo.getDate() - 7);
+              
+              countQuery = countQuery.gte('created_at', weekAgo.toISOString());
+            } else if (filters.period === 'month') {
+              const monthAgo = new Date();
+              monthAgo.setMonth(monthAgo.getMonth() - 1);
+              
+              countQuery = countQuery.gte('created_at', monthAgo.toISOString());
+            }
+            
+            const { count } = await countQuery;
+            
+            return {
+              id: service.id,
+              name: service.name,
+              attendances: count || 0
+            };
+          })
+        );
+        
+        // Sort by number of attendances (descending)
+        const sortedServices = servicesWithAttendances.sort(
+          (a, b) => b.attendances - a.attendances
+        );
+        
+        setData(sortedServices);
       } catch (error) {
-        console.error("Erro ao carregar dados de atendimentos por serviço:", error);
+        console.error('Error fetching service attendance data:', error);
         setData([]);
       } finally {
         setLoading(false);
       }
     };
-
+    
     fetchData();
-  }, [period, department, service, startDate, endDate]);
-
-  return {
-    data,
-    loading
-  };
+  }, [filters]);
+  
+  return { data, loading };
 };

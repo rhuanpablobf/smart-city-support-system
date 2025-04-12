@@ -3,6 +3,7 @@ import { User, UserRole } from '@/types';
 
 export interface AuthContextType {
   currentUser: User | null;
+  setCurrentUser: (user: User) => void;
   loading: boolean;
   login: (email: string, password: string) => Promise<User | void>;
   logout: () => Promise<void>;

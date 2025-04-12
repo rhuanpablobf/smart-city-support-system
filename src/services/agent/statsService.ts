@@ -1,139 +1,125 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { ConversationStatus } from '@/types';
 
-export interface AgentDashboardStats {
-  activeChats: number;
-  maxChats: number;
-  waitingChats: number;
-  avgWaitTime: number;
-  completedChats: number;
-  completedChangePercent: number;
-  abandonedChats: number;
-  abandonedRate: number;
-}
-
-export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> => {
+export const countActiveAgents = async (): Promise<number> => {
   try {
-    // Pegar o ID do agente atual
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado");
-    
-    const agentId = user.id;
-    
-    // Obter o número máximo de conversas simultâneas do perfil
-    const { data: profileData, error: profileError } = await supabase
+    const { count, error } = await supabase
       .from('profiles')
-      .select('max_simultaneous_chats')
-      .eq('id', agentId)
-      .single();
-      
-    if (profileError) throw profileError;
-    
-    const maxChats = profileData?.max_simultaneous_chats || 5;
-    
-    // Obter conversas ativas do agente
-    const { data: activeData, error: activeError } = await supabase
-      .from('conversations')
-      .select('id', { count: 'exact' })
-      .eq('agent_id', agentId)
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'active');
-      
-    if (activeError) throw activeError;
-    
-    const activeChats = activeData?.length || 0;
-    
-    // Obter conversas em espera
-    const { data: waitingData, error: waitingError } = await supabase
+
+    if (error) {
+      throw error;
+    }
+
+    return count || 0;
+  } catch (error) {
+    console.error('Error counting active agents:', error);
+    return 0;
+  }
+};
+
+export const countWaitingConversations = async (): Promise<number> => {
+    try {
+      const { count, error } = await supabase
+        .from('conversations')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'waiting');
+  
+      if (error) {
+        throw error;
+      }
+  
+      return count || 0;
+    } catch (error) {
+      console.error('Error counting waiting conversations:', error);
+      return 0;
+    }
+  };
+
+export const countOpenConversations = async (): Promise<number> => {
+  try {
+    const { count, error } = await supabase
       .from('conversations')
-      .select('id, created_at', { count: 'exact' })
-      .eq('status', 'waiting');
-      
-    if (waitingError) throw waitingError;
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'active');
+
+    if (error) {
+      throw error;
+    }
+
+    return count || 0;
+  } catch (error) {
+    console.error('Error counting open conversations:', error);
+    return 0;
+  }
+};
+
+// Update the countConversationsByStatus function to handle 'completed' and 'abandoned'
+export const countConversationsByStatus = async (status: ConversationStatus | 'completed' | 'abandoned'): Promise<number> => {
+  try {
+    let query = supabase.from('conversations').select('id', { count: 'exact', head: true });
     
-    const waitingChats = waitingData?.length || 0;
-    
-    // Calcular tempo médio de espera
-    let avgWaitTime = 0;
-    if (waitingChats > 0) {
-      const now = new Date();
-      const totalWaitTimeMin = waitingData.reduce((sum, conv) => {
-        const createdAt = new Date(conv.created_at);
-        const waitTimeMin = Math.floor((now.getTime() - createdAt.getTime()) / 60000);
-        return sum + waitTimeMin;
-      }, 0);
-      
-      avgWaitTime = Math.floor(totalWaitTimeMin / waitingChats);
+    // Handle completed conversations (which are marked as 'closed' in the database)
+    if (status === 'completed') {
+      query = query.eq('status', 'closed' as ConversationStatus);
+    } 
+    // Handle all other statuses normally
+    else {
+      query = query.eq('status', status as ConversationStatus);
     }
     
-    // Obter conversas completadas hoje
+    const { count, error } = await query;
+    
+    if (error) {
+      throw error;
+    }
+    
+    return count || 0;
+  } catch (error) {
+    console.error(`Error counting conversations with status ${status}:`, error);
+    return 0;
+  }
+};
+
+// Update getCompletedToday function
+export const getCompletedToday = async (): Promise<number> => {
+  try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const { data: completedTodayData, error: completedTodayError } = await supabase
+    const { count, error } = await supabase
       .from('conversations')
-      .select('id', { count: 'exact' })
-      .eq('agent_id', agentId)
-      .eq('status', 'completed')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'closed' as ConversationStatus)
       .gte('updated_at', today.toISOString());
-      
-    if (completedTodayError) throw completedTodayError;
     
-    const completedChats = completedTodayData?.length || 0;
-    
-    // Obter conversas completadas ontem para comparação
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    const { data: completedYesterdayData, error: completedYesterdayError } = await supabase
-      .from('conversations')
-      .select('id', { count: 'exact' })
-      .eq('agent_id', agentId)
-      .eq('status', 'completed')
-      .gte('updated_at', yesterday.toISOString())
-      .lt('updated_at', today.toISOString());
-      
-    if (completedYesterdayError) throw completedYesterdayError;
-    
-    const completedYesterday = completedYesterdayData?.length || 0;
-    
-    // Calcular percentual de mudança
-    let completedChangePercent = 0;
-    if (completedYesterday > 0) {
-      completedChangePercent = Math.round(((completedChats - completedYesterday) / completedYesterday) * 100);
-    } else if (completedChats > 0) {
-      completedChangePercent = 100; // se não tinha ontem, mas tem hoje, é +100%
+    if (error) {
+      throw error;
     }
     
-    // Obter conversas abandonadas hoje
-    const { data: abandonedTodayData, error: abandonedTodayError } = await supabase
-      .from('conversations')
-      .select('id', { count: 'exact' })
-      .eq('status', 'abandoned')
-      .gte('updated_at', today.toISOString());
-      
-    if (abandonedTodayError) throw abandonedTodayError;
-    
-    const abandonedChats = abandonedTodayData?.length || 0;
-    
-    // Calcular taxa de abandono
-    const totalConversations = completedChats + abandonedChats;
-    let abandonedRate = 0;
-    if (totalConversations > 0) {
-      abandonedRate = Math.round((abandonedChats / totalConversations) * 100);
-    }
-    
-    return {
-      activeChats,
-      maxChats,
-      waitingChats,
-      avgWaitTime,
-      completedChats,
-      completedChangePercent,
-      abandonedChats,
-      abandonedRate
-    };
+    return count || 0;
   } catch (error) {
-    console.error("Erro ao buscar estatísticas do painel:", error);
-    throw error;
+    console.error('Error getting completed conversations today:', error);
+    return 0;
+  }
+};
+
+// Update getAbandonedConversations function
+export const getAbandonedConversations = async (): Promise<number> => {
+  try {
+    const { count, error } = await supabase
+      .from('conversations')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'abandoned' as ConversationStatus);
+    
+    if (error) {
+      throw error;
+    }
+    
+    return count || 0;
+  } catch (error) {
+    console.error('Error getting abandoned conversations:', error);
+    return 0;
   }
 };
