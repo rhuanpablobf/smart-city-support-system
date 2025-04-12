@@ -126,7 +126,7 @@ const cleanAbandonedWaitingConversations = async () => {
     const { data, error } = await supabase
       .from('conversations')
       .update({ 
-        status: 'abandoned',
+        status: 'closed',  // Changed from 'abandoned' to 'closed', which is in the enum
         updated_at: new Date().toISOString()
       })
       .eq('status', 'waiting')
