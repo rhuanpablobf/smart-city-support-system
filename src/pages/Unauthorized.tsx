@@ -2,18 +2,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { AlertCircle } from 'lucide-react';
 
-const NotFound = () => {
+const Unauthorized = () => {
   const navigate = useNavigate();
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow text-center">
-        <div className="text-8xl font-bold text-chatbot-primary mb-4">404</div>
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertCircle className="h-8 w-8 text-red-500" />
+        </div>
         
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Página Não Encontrada</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Acesso Negado</h1>
         <p className="text-gray-600 mb-6">
-          A página que você está procurando não existe ou foi removida.
+          Você não tem permissões suficientes para acessar esta página.
         </p>
         
         <Button
@@ -27,4 +30,4 @@ const NotFound = () => {
   );
 };
 
-export default NotFound;
+export default Unauthorized;
