@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
 const Login = () => {
@@ -25,13 +25,17 @@ const Login = () => {
     console.log("Login page - isAuthenticated check:", isAuthenticated, "userRole:", userRole);
     
     if (isAuthenticated && userRole) {
-      console.log("User is authenticated, navigating to:", userRole === 'agent' ? '/agent' : '/dashboard');
       // Redirecionar baseado no papel do usuário
+      let redirectPath = '/';
+      
       if (userRole === 'admin' || userRole === 'manager') {
-        navigate('/dashboard', { replace: true });
-      } else {
-        navigate('/agent', { replace: true });
+        redirectPath = '/dashboard';
+      } else if (userRole === 'agent') {
+        redirectPath = '/agent';
       }
+      
+      console.log(`Usuário autenticado como ${userRole}, redirecionando para: ${redirectPath}`);
+      navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, navigate, userRole]);
 

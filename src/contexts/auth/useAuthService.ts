@@ -47,12 +47,25 @@ export function useAuthService() {
         console.error("Erro ao buscar perfil:", profileError);
       }
       
+      // Determinar o papel do usuário corretamente
+      let userRole: UserRole = 'user'; // default role
+      
+      // Se temos dados do perfil, usar o papel do perfil
+      if (profileData && profileData.role) {
+        userRole = profileData.role as UserRole;
+      } else {
+        // Alternativa baseada no email (fallback)
+        userRole = determineUserRole(data.user.email);
+      }
+      
+      console.log("Papel determinado:", userRole);
+      
       // Criar objeto de usuário a partir dos metadados e dados do perfil
       const user: User = {
         id: data.user.id,
         name: profileData?.name || data.user.email?.split('@')[0] || '',
         email: data.user.email || '',
-        role: profileData?.role || determineUserRole(data.user.email),
+        role: userRole,
         avatar: profileData?.avatar || '',
         department: null,
         department_id: profileData?.department_id || null,
