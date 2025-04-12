@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const ClientChat = () => {
-  const [departments, setDepartments] = useState([]);
-  const [services, setServices] = useState([]);
+  const [departments, setDepartments] = useState<{id: string; name: string}[]>([]);
+  const [services, setServices] = useState<{id: string; name: string}[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedService, setSelectedService] = useState('');
   const [cpf, setCpf] = useState('');
@@ -71,7 +71,7 @@ const ClientChat = () => {
   }, [selectedDepartment, toast]);
 
   // Função para formatar CPF
-  const formatCPF = (value) => {
+  const formatCPF = (value: string) => {
     // Remove caracteres não numéricos
     const numbers = value.replace(/\D/g, '');
     
@@ -82,12 +82,18 @@ const ClientChat = () => {
     return `${numbers.slice(0, 3)}.${numbers.slice(3, 6)}.${numbers.slice(6, 9)}-${numbers.slice(9, 11)}`;
   };
 
-  const handleCPFChange = (e) => {
+  const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCPF(e.target.value);
     // Limita a 14 caracteres (XXX.XXX.XXX-XX)
     if (formatted.length <= 14) {
       setCpf(formatted);
     }
+  };
+
+  // Validar CPF 
+  const isValidCPF = (cpf: string) => {
+    const cleanCPF = cpf.replace(/\D/g, '');
+    return cleanCPF.length === 11;
   };
 
   // Function to start a new conversation
@@ -100,11 +106,27 @@ const ClientChat = () => {
       });
       return;
     }
+
+    if (!isValidCPF(cpf)) {
+      toast({
+        title: "CPF inválido",
+        description: "Por favor, informe um CPF válido com 11 dígitos.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setLoading(true);
     try {
       // Generate a random user ID for anonymous users
       const userId = crypto.randomUUID();
+      
+      console.log("Criando conversa com:", {
+        user_cpf: cpf,
+        user_id: userId,
+        department_id: selectedDepartment,
+        service_id: selectedService
+      });
       
       // Create a new conversation
       const { data: conversation, error } = await supabase
@@ -126,13 +148,21 @@ const ClientChat = () => {
       
       console.log("Conversa criada com sucesso:", conversation);
       
-      // Redirect to the chat page with the new conversation ID
-      navigate(`/chat?conversationId=${conversation.id}`);
-    } catch (error) {
+      // Mostrar toast de sucesso
+      toast({
+        title: "Conversa iniciada",
+        description: "Redirecionando para o chat...",
+      });
+      
+      // Redirect to the chat page with the new conversation ID after a short delay
+      setTimeout(() => {
+        navigate(`/chat?conversationId=${conversation.id}`);
+      }, 500);
+    } catch (error: any) {
       console.error("Erro ao iniciar conversa:", error);
       toast({
         title: "Erro ao iniciar conversa",
-        description: "Não foi possível iniciar a conversa. Tente novamente.",
+        description: error.message || "Não foi possível iniciar a conversa. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -168,7 +198,7 @@ const ClientChat = () => {
                     <SelectTrigger className="mt-1 w-full rounded-md border border-gray-200 px-5 py-3 text-base text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-blue-300">
                       <SelectValue placeholder="Selecione um departamento" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       {departments.map((department) => (
                         <SelectItem key={department.id} value={department.id}>
                           {department.name}
@@ -183,7 +213,7 @@ const ClientChat = () => {
                     <SelectTrigger className="mt-1 w-full rounded-md border border-gray-200 px-5 py-3 text-base text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-blue-300">
                       <SelectValue placeholder={!selectedDepartment ? "Selecione um departamento primeiro" : "Selecione um serviço"} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white">
                       {services.map((service) => (
                         <SelectItem key={service.id} value={service.id}>
                           {service.name}
@@ -200,7 +230,7 @@ const ClientChat = () => {
                 <div className="relative">
                   <Button
                     disabled={loading || !selectedDepartment || !selectedService || !cpf}
-                    className="bg-blue-500 text-white rounded-md px-5 py-3 w-full disabled:bg-gray-400"
+                    className="bg-blue-500 hover:bg-blue-600 text-white rounded-md px-5 py-3 w-full disabled:bg-gray-400"
                     onClick={startConversation}
                   >
                     {loading ? (
@@ -209,7 +239,10 @@ const ClientChat = () => {
                         Iniciando...
                       </>
                     ) : (
-                      "Iniciar Conversa"
+                      <>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Iniciar Conversa
+                      </>
                     )}
                   </Button>
                 </div>

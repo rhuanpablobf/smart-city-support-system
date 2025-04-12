@@ -1,6 +1,15 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+interface FilterOptions {
+  period?: string;
+  department?: string;
+  service?: string;
+  startDate?: Date;
+  endDate?: Date;
+  days?: number;
+}
+
 interface DashboardStats {
   totalAttendances: number;
   avgAttendanceTime: number;
@@ -10,14 +19,40 @@ interface DashboardStats {
 }
 
 /**
- * Fetch dashboard statistics from Supabase
+ * Fetch dashboard statistics from Supabase with filters
  */
-export const fetchDashboardStats = async (): Promise<DashboardStats> => {
+export const fetchDashboardStats = async (filters?: FilterOptions): Promise<DashboardStats> => {
   try {
-    // Get total attendances (conversations)
-    const { data: conversations, error: conversationsError } = await supabase
-      .from('conversations')
-      .select('*');
+    let query = supabase.from('conversations').select('*');
+    
+    // Aplicar filtro por departamento
+    if (filters?.department && filters.department !== 'all') {
+      query = query.eq('department_id', filters.department);
+    }
+    
+    // Aplicar filtro por serviço
+    if (filters?.service && filters.service !== 'all') {
+      query = query.eq('service_id', filters.service);
+    }
+    
+    // Aplicar filtro por período
+    if (filters?.period === 'custom' && filters.startDate && filters.endDate) {
+      const startDateIso = filters.startDate.toISOString();
+      const endDateIso = new Date(filters.endDate.getTime() + 86400000).toISOString(); // Adiciona 1 dia para inclusão
+      
+      query = query
+        .gte('created_at', startDateIso)
+        .lt('created_at', endDateIso);
+    } else if (filters?.days) {
+      // Para períodos predefinidos
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (filters.days));
+      
+      query = query.gte('created_at', startDate.toISOString());
+    }
+    
+    // Obter todas as conversas com os filtros aplicados
+    const { data: conversations, error: conversationsError } = await query;
 
     if (conversationsError) throw conversationsError;
     
@@ -31,10 +66,22 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
     // Calculate bot percentage
     const botPercentage = totalAttendances > 0 ? Math.round((botAttendances / totalAttendances) * 100) : 0;
     
-    // Get satisfaction surveys
-    const { data: surveys, error: surveysError } = await supabase
-      .from('satisfaction_surveys')
-      .select('rating');
+    // Aplicar os mesmos filtros às pesquisas de satisfação
+    let surveyQuery = supabase.from('satisfaction_surveys').select('rating');
+    
+    // Precisamos unir as pesquisas com as conversas para aplicar os mesmos filtros
+    if (filters?.department && filters.department !== 'all' ||
+        filters?.service && filters.service !== 'all' ||
+        filters?.period === 'custom' || filters?.days) {
+      
+      // Primeiro obter os IDs das conversas filtradas
+      const conversationIds = conversations?.map(conv => conv.id) || [];
+      if (conversationIds.length > 0) {
+        surveyQuery = surveyQuery.in('conversation_id', conversationIds);
+      }
+    }
+    
+    const { data: surveys, error: surveysError } = await surveyQuery;
       
     if (surveysError) throw surveysError;
     
@@ -43,11 +90,24 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
       ? Math.round((surveys.reduce((sum, survey) => sum + survey.rating, 0) / surveys.length / 5) * 100)
       : 0;
     
-    // Get messages to calculate avg time
-    const { data: messages, error: messagesError } = await supabase
-      .from('messages')
-      .select('conversation_id, timestamp')
-      .order('timestamp', { ascending: true });
+    // Aplicar os mesmos filtros às mensagens
+    let messagesQuery = supabase.from('messages').select('conversation_id, timestamp');
+    
+    // Aplicar os mesmos filtros por ID de conversas
+    if (filters?.department && filters.department !== 'all' ||
+        filters?.service && filters.service !== 'all' ||
+        filters?.period === 'custom' || filters?.days) {
+      
+      // Primeiro obter os IDs das conversas filtradas
+      const conversationIds = conversations?.map(conv => conv.id) || [];
+      if (conversationIds.length > 0) {
+        messagesQuery = messagesQuery.in('conversation_id', conversationIds);
+      }
+    }
+    
+    messagesQuery = messagesQuery.order('timestamp', { ascending: true });
+    
+    const { data: messages, error: messagesError } = await messagesQuery;
     
     if (messagesError) throw messagesError;
     
@@ -99,16 +159,44 @@ export const fetchDashboardStats = async (): Promise<DashboardStats> => {
 };
 
 /**
- * Fetch department statistics
+ * Fetch department statistics with filters
  */
-export const fetchDepartmentStats = async () => {
+export const fetchDepartmentStats = async (filters?: FilterOptions) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('conversations')
       .select(`
         department_id,
         departments!inner(name)
       `);
+    
+    // Aplicar filtro por departamento
+    if (filters?.department && filters.department !== 'all') {
+      query = query.eq('department_id', filters.department);
+    }
+    
+    // Aplicar filtro por serviço
+    if (filters?.service && filters.service !== 'all') {
+      query = query.eq('service_id', filters.service);
+    }
+    
+    // Aplicar filtro por período
+    if (filters?.period === 'custom' && filters.startDate && filters.endDate) {
+      const startDateIso = filters.startDate.toISOString();
+      const endDateIso = new Date(filters.endDate.getTime() + 86400000).toISOString(); // Adiciona 1 dia para inclusão
+      
+      query = query
+        .gte('created_at', startDateIso)
+        .lt('created_at', endDateIso);
+    } else if (filters?.days) {
+      // Para períodos predefinidos
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (filters.days));
+      
+      query = query.gte('created_at', startDate.toISOString());
+    }
+    
+    const { data, error } = await query;
     
     if (error) throw error;
     
@@ -133,28 +221,53 @@ export const fetchDepartmentStats = async () => {
 };
 
 /**
- * Fetch daily attendance statistics
+ * Fetch daily attendance statistics with filters
  */
-export const fetchDailyStats = async (days: number = 30) => {
+export const fetchDailyStats = async (days: number = 30, filters?: FilterOptions) => {
   try {
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
     
-    const { data, error } = await supabase
+    if (filters?.period === 'custom' && filters.startDate && filters.endDate) {
+      // Use custom date range
+      startDate.setTime(filters.startDate.getTime());
+      endDate.setTime(filters.endDate.getTime());
+      // Adiciona um dia ao endDate para incluir o último dia completamente
+      endDate.setDate(endDate.getDate() + 1);
+      
+      // Recalcula days baseado nas datas selecionadas
+      days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    } else {
+      // Use predefined range
+      startDate.setDate(startDate.getDate() - days);
+    }
+    
+    let query = supabase
       .from('conversations')
       .select('created_at')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
+    
+    // Aplicar filtro por departamento
+    if (filters?.department && filters.department !== 'all') {
+      query = query.eq('department_id', filters.department);
+    }
+    
+    // Aplicar filtro por serviço
+    if (filters?.service && filters.service !== 'all') {
+      query = query.eq('service_id', filters.service);
+    }
+    
+    const { data, error } = await query;
     
     if (error) throw error;
     
     // Initialize daily counts with zeros for all days
     const dailyCounts: Record<string, number> = {};
     for (let i = 0; i <= days; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
       const dateString = date.toISOString().split('T')[0];
       dailyCounts[dateString] = 0;
     }
@@ -178,11 +291,11 @@ export const fetchDailyStats = async (days: number = 30) => {
 };
 
 /**
- * Fetch agent performance data
+ * Fetch agent performance data with filters
  */
-export const fetchAgentPerformance = async () => {
+export const fetchAgentPerformance = async (filters?: FilterOptions) => {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('conversations')
       .select(`
         agent_id,
@@ -191,6 +304,34 @@ export const fetchAgentPerformance = async () => {
       `)
       .not('agent_id', 'is', null)
       .eq('status', 'closed');
+    
+    // Aplicar filtro por departamento
+    if (filters?.department && filters.department !== 'all') {
+      query = query.eq('department_id', filters.department);
+    }
+    
+    // Aplicar filtro por serviço
+    if (filters?.service && filters.service !== 'all') {
+      query = query.eq('service_id', filters.service);
+    }
+    
+    // Aplicar filtro por período
+    if (filters?.period === 'custom' && filters.startDate && filters.endDate) {
+      const startDateIso = filters.startDate.toISOString();
+      const endDateIso = new Date(filters.endDate.getTime() + 86400000).toISOString(); // Adiciona 1 dia para inclusão
+      
+      query = query
+        .gte('created_at', startDateIso)
+        .lt('created_at', endDateIso);
+    } else if (filters?.days) {
+      // Para períodos predefinidos
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - (filters.days));
+      
+      query = query.gte('created_at', startDate.toISOString());
+    }
+    
+    const { data, error } = await query;
     
     if (error) throw error;
     

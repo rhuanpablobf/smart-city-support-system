@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, PieChart } from 'lucide-react';
@@ -18,7 +17,21 @@ import {
 } from 'recharts';
 import { useToast } from '@/components/ui/use-toast';
 
-const OverviewTab: React.FC = () => {
+interface OverviewTabProps {
+  period: string;
+  department: string;
+  service: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+const OverviewTab: React.FC<OverviewTabProps> = ({ 
+  period, 
+  department, 
+  service,
+  startDate,
+  endDate 
+}) => {
   const [stats, setStats] = useState({
     totalAttendances: 0,
     botAttendances: 0,
@@ -41,15 +54,47 @@ const OverviewTab: React.FC = () => {
       try {
         setLoading(true);
         
+        // Determinar o número de dias com base no período
+        let days = 30;
+        switch (period) {
+          case 'today':
+            days = 1;
+            break;
+          case 'week':
+            days = 7;
+            break;
+          case 'month':
+            days = 30;
+            break;
+          case 'quarter':
+            days = 90;
+            break;
+          case 'year':
+            days = 365;
+            break;
+        }
+        
+        // Prepara os parâmetros dos filtros
+        const filters = {
+          period,
+          department,
+          service,
+          startDate,
+          endDate,
+          days
+        };
+        
+        console.log("Aplicando filtros:", filters);
+        
         // Buscar estatísticas gerais
-        const dashboardStats = await fetchDashboardStats();
+        const dashboardStats = await fetchDashboardStats(filters);
         
         // Buscar dados diários
-        const dailyStats = await fetchDailyStats();
+        const dailyStats = await fetchDailyStats(days, filters);
         setDailyData(dailyStats);
         
         // Buscar dados por departamento
-        const departmentStats = await fetchDepartmentStats();
+        const departmentStats = await fetchDepartmentStats(filters);
         const deptData = departmentStats.map((dept, index) => ({
           ...dept,
           color: COLORS[index % COLORS.length]
@@ -84,7 +129,7 @@ const OverviewTab: React.FC = () => {
     };
     
     loadData();
-  }, [toast]);
+  }, [period, department, service, startDate, endDate, toast]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -148,7 +193,7 @@ const OverviewTab: React.FC = () => {
           <CardHeader>
             <CardTitle>Atendimentos por Dia</CardTitle>
             <CardDescription>
-              Distribuição de atendimentos nos últimos 30 dias
+              Distribuição de atendimentos nos últimos {period === 'today' ? 'dias' : period === 'week' ? '7 dias' : period === 'month' ? '30 dias' : period === 'quarter' ? '3 meses' : period === 'year' ? '12 meses' : 'dias selecionados'}
             </CardDescription>
           </CardHeader>
           <CardContent className="h-80">

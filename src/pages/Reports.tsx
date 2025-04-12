@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DownloadIcon } from 'lucide-react';
@@ -8,11 +8,49 @@ import OverviewTab from '@/components/reports/OverviewTab';
 import PerformanceTab from '@/components/reports/PerformanceTab';
 import SatisfactionTab from '@/components/reports/SatisfactionTab';
 import AgentsTab from '@/components/reports/AgentsTab';
+import { useToast } from '@/components/ui/use-toast';
 
 const Reports = () => {
   const [period, setPeriod] = useState('month');
   const [department, setDepartment] = useState('all');
+  const [service, setService] = useState('all');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [filterApplied, setFilterApplied] = useState(false);
+  const { toast } = useToast();
   
+  // Aplicar filtros quando os valores mudam (exceto para período personalizado)
+  useEffect(() => {
+    if (period !== 'custom') {
+      handleApplyFilters();
+    }
+  }, [period, department, service]);
+
+  // Limpar datas quando o período não for personalizado
+  useEffect(() => {
+    if (period !== 'custom') {
+      setStartDate(undefined);
+      setEndDate(undefined);
+    }
+  }, [period]);
+
+  const handleApplyFilters = () => {
+    // Validar datas para período personalizado
+    if (period === 'custom' && (!startDate || !endDate)) {
+      toast({
+        title: "Período incompleto",
+        description: "Por favor, selecione data de início e fim para o período personalizado.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setFilterApplied(true);
+    
+    // Aqui você pode implementar a lógica para atualizar os dados dos relatórios
+    console.log('Filtros aplicados:', { period, department, service, startDate, endDate });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -28,6 +66,13 @@ const Reports = () => {
         setPeriod={setPeriod}
         department={department}
         setDepartment={setDepartment}
+        service={service}
+        setService={setService}
+        startDate={startDate}
+        endDate={endDate}
+        setStartDate={setStartDate}
+        setEndDate={setEndDate}
+        onApplyFilters={handleApplyFilters}
       />
       
       <Tabs defaultValue="overview">
@@ -39,7 +84,13 @@ const Reports = () => {
         </TabsList>
         
         <TabsContent value="overview" className="space-y-4 mt-4">
-          <OverviewTab />
+          <OverviewTab 
+            period={period}
+            department={department}
+            service={service}
+            startDate={startDate}
+            endDate={endDate}
+          />
         </TabsContent>
         
         <TabsContent value="performance" className="space-y-4 mt-4">
