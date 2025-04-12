@@ -69,20 +69,32 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
     // Create new user ID
     const uuid = uuidv4();
     
-    // Insert profile in profiles table
-    const { data, error } = await supabase
+    // Verifique se o email já existe
+    const { data: existingUser, error: checkError } = await supabase
       .from('profiles')
-      .insert({
-        id: uuid,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        department_id: userData.department_id,
-        max_simultaneous_chats: 5, // Default value
-        status: userData.status || 'active' // Garantir que sempre temos um valor para status
-      })
-      .select()
+      .select('id')
+      .eq('email', userData.email)
       .single();
+      
+    if (existingUser) {
+      throw new Error('Um usuário com este email já existe');
+    }
+    
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 é o código para "não encontrado", que é esperado
+      console.error('Erro ao verificar email existente:', checkError);
+      throw checkError;
+    }
+    
+    // Insert profile in profiles table via RPC para evitar problemas de recursão
+    const { data, error } = await supabase.rpc('insert_profile', {
+      profile_id: uuid,
+      profile_name: userData.name, 
+      profile_email: userData.email,
+      profile_role: userData.role,
+      profile_department_id: userData.department_id,
+      profile_status: userData.status || 'active'
+    });
 
     if (error) {
       console.error('Erro ao adicionar usuário:', error.message);
@@ -145,17 +157,32 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
  */
 export const updateUser = async (userId: string, userData: UserFormValues): Promise<void> => {
   try {
-    // Update profile in profiles table
-    const { error } = await supabase
+    // Verifique se o email já existe (e não é o do usuário atual)
+    const { data: existingUser, error: checkError } = await supabase
       .from('profiles')
-      .update({
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        department_id: userData.department_id,
-        status: userData.status || 'active' // Garantir que sempre temos um valor para status
-      })
-      .eq('id', userId);
+      .select('id')
+      .eq('email', userData.email)
+      .neq('id', userId)
+      .single();
+      
+    if (existingUser) {
+      throw new Error('Um usuário com este email já existe');
+    }
+    
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 é o código para "não encontrado", que é esperado
+      console.error('Erro ao verificar email existente:', checkError);
+    }
+    
+    // Update profile via RPC para evitar problemas de recursão
+    const { error } = await supabase.rpc('update_profile', {
+      profile_id: userId,
+      profile_name: userData.name, 
+      profile_email: userData.email,
+      profile_role: userData.role,
+      profile_department_id: userData.department_id,
+      profile_status: userData.status || 'active'
+    });
 
     if (error) {
       console.error('Erro ao atualizar usuário:', error.message);

@@ -46,16 +46,37 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>(user?.department_id);
   const [availableServices, setAvailableServices] = useState<Service[]>([]);
 
+  // Reset form when dialog opens/closes or when user changes
+  useEffect(() => {
+    if (open && user) {
+      form.reset({
+        name: user.name,
+        email: user.email,
+        role: user.role !== 'user' ? user.role : 'agent',
+        department_id: user.department_id,
+        serviceIds: user.serviceIds || [],
+        status: user.status || 'active'
+      });
+      setSelectedRole(user.role);
+      setSelectedDepartmentId(user.department_id);
+    } else if (open && !user) {
+      // Reset for new user
+      form.reset({
+        name: '',
+        email: '',
+        role: 'agent',
+        department_id: '',
+        serviceIds: [],
+        status: 'active'
+      });
+      setSelectedRole('agent');
+      setSelectedDepartmentId(undefined);
+    }
+  }, [open, user]);
+
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
-    defaultValues: user ? {
-      name: user.name,
-      email: user.email,
-      role: user.role !== 'user' ? user.role : 'agent',
-      department_id: user.department_id,
-      serviceIds: user.serviceIds || [],
-      status: user.status || 'active'
-    } : {
+    defaultValues: {
       name: '',
       email: '',
       role: 'agent',
@@ -94,6 +115,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
   const onSubmit = (values: UserFormValues) => {
     onSave(values);
     onOpenChange(false);
+    form.reset();
   };
 
   // Determine which departments are available based on current user role
@@ -138,7 +160,13 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(value) => {
+      if (!value) {
+        // Quando o diálogo é fechado, resete o formulário
+        form.reset();
+      }
+      onOpenChange(value);
+    }}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Usuário' : 'Adicionar Usuário'}</DialogTitle>
@@ -190,7 +218,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
                       field.onChange(value);
                       setSelectedRole(value);
                     }}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -223,7 +251,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
                       setSelectedDepartmentId(value);
                       form.setValue('serviceIds', []);
                     }}
-                    defaultValue={field.value}
+                    value={field.value || ""}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -298,7 +326,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
                   <FormLabel>Status</FormLabel>
                   <Select 
                     onValueChange={field.onChange} 
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -319,7 +347,10 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => onOpenChange(false)}
+                onClick={() => {
+                  form.reset();
+                  onOpenChange(false);
+                }}
               >
                 Cancelar
               </Button>
