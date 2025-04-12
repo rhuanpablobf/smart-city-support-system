@@ -14,7 +14,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Edit, MoreHorizontal, Plus, Search, Trash2, UserPlus } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { User } from '@/types';
+import { useUserManagement, UserFormValues } from '@/hooks/useUserManagement';
+import { UserFormDialog } from '@/components/users/UserFormDialog';
+import { DeleteUserDialog } from '@/components/users/DeleteUserDialog';
 
 // Mock user data
 const mockUsers = [
@@ -61,15 +64,18 @@ const mockUsers = [
 ];
 
 const UsersManagement = () => {
-  const [users] = useState(mockUsers);
-  const [searchTerm, setSearchTerm] = useState('');
-  const { toast } = useToast();
+  const {
+    filteredUsers,
+    searchTerm,
+    setSearchTerm,
+    addUser,
+    updateUser,
+    deleteUser
+  } = useUserManagement(mockUsers);
   
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.department.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [isUserFormOpen, setIsUserFormOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -94,24 +100,41 @@ const UsersManagement = () => {
       : 'bg-gray-100 text-gray-800 border-gray-200';
   };
   
-  const handleDeleteUser = (userId: string) => {
-    toast({
-      title: "Usuário removido",
-      description: "O usuário foi removido com sucesso.",
-    });
+  const handleOpenAddUser = () => {
+    setSelectedUser(null);
+    setIsUserFormOpen(true);
   };
   
-  const handleEditUser = (userId: string) => {
-    toast({
-      description: "Esta funcionalidade será implementada em breve.",
-    });
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setIsUserFormOpen(true);
+  };
+  
+  const handleOpenDeleteDialog = (user: User) => {
+    setSelectedUser(user);
+    setIsDeleteDialogOpen(true);
+  };
+  
+  const handleSaveUser = (formData: UserFormValues) => {
+    if (selectedUser) {
+      updateUser(selectedUser.id, formData);
+    } else {
+      addUser(formData);
+    }
+  };
+  
+  const handleDeleteConfirm = () => {
+    if (selectedUser) {
+      deleteUser(selectedUser.id);
+      setIsDeleteDialogOpen(false);
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Gerenciamento de Usuários</h2>
-        <Button>
+        <Button onClick={handleOpenAddUser}>
           <UserPlus className="mr-2 h-4 w-4" />
           Adicionar Usuário
         </Button>
@@ -135,7 +158,7 @@ const UsersManagement = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleOpenAddUser}>
               <Plus className="mr-2 h-4 w-4" />
               Adicionar
             </Button>
@@ -192,11 +215,11 @@ const UsersManagement = () => {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Ações</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleEditUser(user.id)}>
+                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
                           <Edit className="mr-2 h-4 w-4" />
                           <span>Editar</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDeleteUser(user.id)}>
+                        <DropdownMenuItem onClick={() => handleOpenDeleteDialog(user)}>
                           <Trash2 className="mr-2 h-4 w-4" />
                           <span>Excluir</span>
                         </DropdownMenuItem>
@@ -215,6 +238,24 @@ const UsersManagement = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Dialog para adicionar/editar usuário */}
+      <UserFormDialog
+        open={isUserFormOpen}
+        onOpenChange={setIsUserFormOpen}
+        user={selectedUser}
+        onSave={handleSaveUser}
+      />
+      
+      {/* Dialog para confirmar exclusão */}
+      {selectedUser && (
+        <DeleteUserDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          userName={selectedUser.name}
+          onConfirm={handleDeleteConfirm}
+        />
+      )}
     </div>
   );
 };
