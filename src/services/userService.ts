@@ -8,6 +8,8 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export const fetchUsers = async (): Promise<User[]> => {
   try {
+    // Usando a nova política RLS, isso só funcionará para administradores
+    // ou retornará apenas o próprio perfil do usuário para não-administradores
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select('*, departments:department_id(id, name, description)');
@@ -60,120 +62,136 @@ export const fetchUsers = async (): Promise<User[]> => {
  * Add a new user to the system
  */
 export const addUser = async (userData: UserFormValues): Promise<User> => {
-  // Create new user ID
-  const uuid = uuidv4();
-  
-  // Insert profile in profiles table
-  const { data, error } = await supabase
-    .from('profiles')
-    .insert({
+  try {
+    // Create new user ID
+    const uuid = uuidv4();
+    
+    // Insert profile in profiles table
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert({
+        id: uuid,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        department_id: userData.department_id,
+        max_simultaneous_chats: 5, // Default value
+        status: userData.status || 'active' // Garantir que sempre temos um valor para status
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Erro ao adicionar usuário:', error.message);
+      throw error;
+    }
+
+    // If manager or agent and has services selected, insert in agent_services table
+    if ((userData.role === 'agent' || userData.role === 'manager') && 
+        userData.serviceIds && 
+        userData.serviceIds.length > 0) {
+      
+      // Create array of agent_service objects
+      const agentServicesData = userData.serviceIds.map(serviceId => ({
+        agent_id: uuid,
+        service_id: serviceId
+      }));
+      
+      // Use RPC function to insert data
+      const { error: servicesError } = await supabase.rpc('insert_agent_services', { 
+        services: agentServicesData 
+      });
+        
+      if (servicesError) {
+        console.error("Error adding agent services:", servicesError);
+        throw servicesError;
+      }
+    }
+    
+    // Fetch department name for display
+    let departmentName = null;
+    if (userData.department_id) {
+      const { data: deptData } = await supabase
+        .from('departments')
+        .select('name')
+        .eq('id', userData.department_id)
+        .single();
+        
+      if (deptData) departmentName = deptData.name;
+    }
+
+    // Return the new user
+    return {
       id: uuid,
       name: userData.name,
       email: userData.email,
       role: userData.role,
+      department: departmentName,
       department_id: userData.department_id,
-      max_simultaneous_chats: 5, // Default value
+      serviceIds: userData.serviceIds,
       status: userData.status || 'active' // Garantir que sempre temos um valor para status
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  // If manager or agent and has services selected, insert in agent_services table
-  if ((userData.role === 'agent' || userData.role === 'manager') && 
-      userData.serviceIds && 
-      userData.serviceIds.length > 0) {
-    
-    // Create array of agent_service objects
-    const agentServicesData = userData.serviceIds.map(serviceId => ({
-      agent_id: uuid,
-      service_id: serviceId
-    }));
-    
-    // Use RPC function to insert data
-    const { error: servicesError } = await supabase.rpc('insert_agent_services', { 
-      services: agentServicesData 
-    });
-      
-    if (servicesError) {
-      console.error("Error adding agent services:", servicesError);
-      throw servicesError;
-    }
+    };
+  } catch (error) {
+    console.error('Erro ao adicionar usuário:', error);
+    throw error;
   }
-  
-  // Fetch department name for display
-  let departmentName = null;
-  if (userData.department_id) {
-    const { data: deptData } = await supabase
-      .from('departments')
-      .select('name')
-      .eq('id', userData.department_id)
-      .single();
-      
-    if (deptData) departmentName = deptData.name;
-  }
-
-  // Return the new user
-  return {
-    id: uuid,
-    name: userData.name,
-    email: userData.email,
-    role: userData.role,
-    department: departmentName,
-    department_id: userData.department_id,
-    serviceIds: userData.serviceIds,
-    status: userData.status || 'active' // Garantir que sempre temos um valor para status
-  };
 };
 
 /**
  * Update an existing user
  */
 export const updateUser = async (userId: string, userData: UserFormValues): Promise<void> => {
-  // Update profile in profiles table
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      name: userData.name,
-      email: userData.email,
-      role: userData.role,
-      department_id: userData.department_id,
-      status: userData.status || 'active' // Garantir que sempre temos um valor para status
-    })
-    .eq('id', userId);
+  try {
+    // Update profile in profiles table
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        department_id: userData.department_id,
+        status: userData.status || 'active' // Garantir que sempre temos um valor para status
+      })
+      .eq('id', userId);
 
-  if (error) throw error;
-
-  // Update user services (delete existing and insert new)
-  if (userData.role === 'agent' || userData.role === 'manager') {
-    // Remove existing associations using RPC
-    const { error: deleteError } = await supabase
-      .rpc('delete_agent_services', { agent_id_param: userId });
-      
-    if (deleteError) {
-      console.error("Error removing agent services:", deleteError);
-      throw deleteError;
+    if (error) {
+      console.error('Erro ao atualizar usuário:', error.message);
+      throw error;
     }
-    
-    // Add new service associations
-    if (userData.serviceIds && userData.serviceIds.length > 0) {
-      const agentServicesData = userData.serviceIds.map(serviceId => ({
-        agent_id: userId,
-        service_id: serviceId
-      }));
-      
-      // Use RPC to insert new services
-      const { error: insertError } = await supabase
-        .rpc('insert_agent_services', { 
-          services: agentServicesData 
-        });
+
+    // Update user services (delete existing and insert new)
+    if (userData.role === 'agent' || userData.role === 'manager') {
+      // Remove existing associations using RPC
+      const { error: deleteError } = await supabase
+        .rpc('delete_agent_services', { agent_id_param: userId });
         
-      if (insertError) {
-        console.error("Error adding agent services:", insertError);
-        throw insertError;
+      if (deleteError) {
+        console.error("Error removing agent services:", deleteError);
+        throw deleteError;
+      }
+      
+      // Add new service associations
+      if (userData.serviceIds && userData.serviceIds.length > 0) {
+        const agentServicesData = userData.serviceIds.map(serviceId => ({
+          agent_id: userId,
+          service_id: serviceId
+        }));
+        
+        // Use RPC to insert new services
+        const { error: insertError } = await supabase
+          .rpc('insert_agent_services', { 
+            services: agentServicesData 
+          });
+          
+        if (insertError) {
+          console.error("Error adding agent services:", insertError);
+          throw insertError;
+        }
       }
     }
+  } catch (error) {
+    console.error('Erro ao atualizar usuário:', error);
+    throw error;
   }
 };
 
@@ -181,10 +199,18 @@ export const updateUser = async (userId: string, userData: UserFormValues): Prom
  * Delete a user from the system
  */
 export const deleteUser = async (userId: string): Promise<void> => {
-  const { error } = await supabase
-    .from('profiles')
-    .delete()
-    .eq('id', userId);
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
 
-  if (error) throw error;
+    if (error) {
+      console.error('Erro ao excluir usuário:', error.message);
+      throw error;
+    }
+  } catch (error) {
+    console.error('Erro ao excluir usuário:', error);
+    throw error;
+  }
 };
