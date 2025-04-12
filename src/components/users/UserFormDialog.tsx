@@ -46,34 +46,6 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>(user?.department_id);
   const [availableServices, setAvailableServices] = useState<Service[]>([]);
 
-  // Reset form when dialog opens/closes or when user changes
-  useEffect(() => {
-    if (open && user) {
-      form.reset({
-        name: user.name,
-        email: user.email,
-        role: user.role !== 'user' ? user.role : 'agent',
-        department_id: user.department_id,
-        serviceIds: user.serviceIds || [],
-        status: user.status || 'active'
-      });
-      setSelectedRole(user.role);
-      setSelectedDepartmentId(user.department_id);
-    } else if (open && !user) {
-      // Reset for new user
-      form.reset({
-        name: '',
-        email: '',
-        role: 'agent',
-        department_id: '',
-        serviceIds: [],
-        status: 'active'
-      });
-      setSelectedRole('agent');
-      setSelectedDepartmentId(undefined);
-    }
-  }, [open, user]);
-
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
@@ -85,6 +57,39 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
       status: 'active'
     }
   });
+
+  // Reset form when dialog opens/closes or when user changes
+  useEffect(() => {
+    if (open && user) {
+      // Using setTimeout to prevent React state updates during rendering
+      setTimeout(() => {
+        form.reset({
+          name: user.name,
+          email: user.email,
+          role: user.role !== 'user' ? user.role : 'agent',
+          department_id: user.department_id || '',
+          serviceIds: user.serviceIds || [],
+          status: user.status || 'active'
+        });
+        setSelectedRole(user.role);
+        setSelectedDepartmentId(user.department_id);
+      }, 0);
+    } else if (open && !user) {
+      // Reset for new user
+      setTimeout(() => {
+        form.reset({
+          name: '',
+          email: '',
+          role: 'agent',
+          department_id: '',
+          serviceIds: [],
+          status: 'active'
+        });
+        setSelectedRole('agent');
+        setSelectedDepartmentId(undefined);
+      }, 0);
+    }
+  }, [open, user, form]);
 
   // Update available services when department changes
   useEffect(() => {
@@ -114,8 +119,8 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
 
   const onSubmit = (values: UserFormValues) => {
     onSave(values);
-    onOpenChange(false);
-    form.reset();
+    // Important: Don't close the dialog here to prevent UI freezing
+    // Let the parent component handle closing it after save is complete
   };
 
   // Determine which departments are available based on current user role
@@ -159,10 +164,15 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
     return roleOptions;
   };
 
+  const handleCancelClick = () => {
+    form.reset();
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={(value) => {
       if (!value) {
-        // Quando o diálogo é fechado, resete o formulário
+        // When dialog is closed, reset the form
         form.reset();
       }
       onOpenChange(value);
@@ -347,10 +357,7 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => {
-                  form.reset();
-                  onOpenChange(false);
-                }}
+                onClick={handleCancelClick}
               >
                 Cancelar
               </Button>

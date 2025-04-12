@@ -8,13 +8,13 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export const fetchUsers = async (): Promise<User[]> => {
   try {
-    // Usando RPC para evitar recursão infinita nas políticas RLS
+    // Using RPC to avoid infinite recursion in RLS policies
     const { data, error } = await supabase.rpc(
       'get_all_profiles_safe'
     ) as { data: any[], error: any };
 
     if (error) {
-      console.error('Erro ao buscar perfis:', error.message);
+      console.error('Error fetching profiles:', error.message);
       throw error;
     }
 
@@ -30,7 +30,7 @@ export const fetchUsers = async (): Promise<User[]> => {
       role: profile.role,
       department: profile.department_name || null,
       department_id: profile.department_id || null,
-      status: profile.status || 'active', // Usar o valor do banco ou 'active' como fallback
+      status: profile.status || 'active', // Use value from database or 'active' as fallback
       avatar: profile.avatar || undefined,
       maxSimultaneousChats: profile.max_simultaneous_chats || 5
     }));
@@ -56,7 +56,7 @@ export const fetchUsers = async (): Promise<User[]> => {
     
     return formattedUsers;
   } catch (error: any) {
-    console.error('Erro ao buscar usuários:', error.message);
+    console.error('Error fetching users:', error.message);
     throw error;
   }
 };
@@ -69,7 +69,7 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
     // Create new user ID
     const uuid = uuidv4();
     
-    // Verifique se o email já existe
+    // Check if email already exists
     const { data: existingUser, error: checkError } = await supabase
       .from('profiles')
       .select('id')
@@ -77,27 +77,31 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
       .single();
       
     if (existingUser) {
-      throw new Error('Um usuário com este email já existe');
+      throw new Error('A user with this email already exists');
     }
     
     if (checkError && checkError.code !== 'PGRST116') {
-      // PGRST116 é o código para "não encontrado", que é esperado
-      console.error('Erro ao verificar email existente:', checkError);
+      // PGRST116 is the error code for "not found", which is expected
+      console.error('Error checking existing email:', checkError);
       throw checkError;
     }
     
-    // Insert profile in profiles table via RPC para evitar problemas de recursão
-    const { data, error } = await supabase.rpc('insert_profile', {
-      profile_id: uuid,
-      profile_name: userData.name, 
-      profile_email: userData.email,
-      profile_role: userData.role,
-      profile_department_id: userData.department_id,
-      profile_status: userData.status || 'active'
-    });
+    // Insert profile in profiles table via RPC to avoid recursion issues
+    const { error } = await supabase.rpc(
+      // Type assertion to inform TypeScript this is an allowed function name
+      'insert_profile' as any, 
+      {
+        profile_id: uuid,
+        profile_name: userData.name, 
+        profile_email: userData.email,
+        profile_role: userData.role,
+        profile_department_id: userData.department_id,
+        profile_status: userData.status || 'active'
+      }
+    );
 
     if (error) {
-      console.error('Erro ao adicionar usuário:', error.message);
+      console.error('Error adding user:', error.message);
       throw error;
     }
 
@@ -113,9 +117,10 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
       }));
       
       // Use RPC function to insert data
-      const { error: servicesError } = await supabase.rpc('insert_agent_services', { 
-        services: agentServicesData 
-      });
+      const { error: servicesError } = await supabase.rpc(
+        'insert_agent_services', 
+        { services: agentServicesData }
+      );
         
       if (servicesError) {
         console.error("Error adding agent services:", servicesError);
@@ -144,10 +149,10 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
       department: departmentName,
       department_id: userData.department_id,
       serviceIds: userData.serviceIds,
-      status: userData.status || 'active' // Garantir que sempre temos um valor para status
+      status: userData.status || 'active' // Ensure we always have a status value
     };
   } catch (error) {
-    console.error('Erro ao adicionar usuário:', error);
+    console.error('Error adding user:', error);
     throw error;
   }
 };
@@ -157,7 +162,7 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
  */
 export const updateUser = async (userId: string, userData: UserFormValues): Promise<void> => {
   try {
-    // Verifique se o email já existe (e não é o do usuário atual)
+    // Check if email already exists (and is not the current user's)
     const { data: existingUser, error: checkError } = await supabase
       .from('profiles')
       .select('id')
@@ -166,26 +171,30 @@ export const updateUser = async (userId: string, userData: UserFormValues): Prom
       .single();
       
     if (existingUser) {
-      throw new Error('Um usuário com este email já existe');
+      throw new Error('A user with this email already exists');
     }
     
     if (checkError && checkError.code !== 'PGRST116') {
-      // PGRST116 é o código para "não encontrado", que é esperado
-      console.error('Erro ao verificar email existente:', checkError);
+      // PGRST116 is the error code for "not found", which is expected
+      console.error('Error checking existing email:', checkError);
     }
     
-    // Update profile via RPC para evitar problemas de recursão
-    const { error } = await supabase.rpc('update_profile', {
-      profile_id: userId,
-      profile_name: userData.name, 
-      profile_email: userData.email,
-      profile_role: userData.role,
-      profile_department_id: userData.department_id,
-      profile_status: userData.status || 'active'
-    });
+    // Update profile via RPC to avoid recursion issues
+    const { error } = await supabase.rpc(
+      // Type assertion to inform TypeScript this is an allowed function name
+      'update_profile' as any,
+      {
+        profile_id: userId,
+        profile_name: userData.name, 
+        profile_email: userData.email,
+        profile_role: userData.role,
+        profile_department_id: userData.department_id,
+        profile_status: userData.status || 'active'
+      }
+    );
 
     if (error) {
-      console.error('Erro ao atualizar usuário:', error.message);
+      console.error('Error updating user:', error.message);
       throw error;
     }
 
@@ -220,7 +229,7 @@ export const updateUser = async (userId: string, userData: UserFormValues): Prom
       }
     }
   } catch (error) {
-    console.error('Erro ao atualizar usuário:', error);
+    console.error('Error updating user:', error);
     throw error;
   }
 };
@@ -236,11 +245,11 @@ export const deleteUser = async (userId: string): Promise<void> => {
       .eq('id', userId);
 
     if (error) {
-      console.error('Erro ao excluir usuário:', error.message);
+      console.error('Error deleting user:', error.message);
       throw error;
     }
   } catch (error) {
-    console.error('Erro ao excluir usuário:', error);
+    console.error('Error deleting user:', error);
     throw error;
   }
 };

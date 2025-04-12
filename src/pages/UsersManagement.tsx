@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { DeleteUserDialog } from '@/components/users/DeleteUserDialog';
 import { UserTableHeader } from '@/components/users/UserTableHeader';
 import { UserTable } from '@/components/users/UserTable';
 import { useAuth } from '@/contexts/auth';
+import { useToast } from "@/components/ui/use-toast";
 
 const UsersManagement = () => {
   const {
@@ -28,6 +28,7 @@ const UsersManagement = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { currentUser } = useAuth();
+  const { toast } = useToast();
   
   const handleOpenAddUser = () => {
     setSelectedUser(null);
@@ -44,18 +45,50 @@ const UsersManagement = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const handleSaveUser = (formData: UserFormValues) => {
-    if (selectedUser) {
-      updateUser(selectedUser.id, formData);
-    } else {
-      addUser(formData);
+  const handleSaveUser = async (formData: UserFormValues) => {
+    try {
+      if (selectedUser) {
+        await updateUser(selectedUser.id, formData);
+        toast({
+          title: "Usuário atualizado",
+          description: "O usuário foi atualizado com sucesso.",
+        });
+      } else {
+        await addUser(formData);
+        toast({
+          title: "Usuário adicionado",
+          description: "O novo usuário foi adicionado com sucesso.",
+        });
+      }
+      
+      // Only close the dialog after the operation is complete
+      setIsUserFormOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Ocorreu um erro ao salvar o usuário",
+        variant: "destructive",
+      });
+      // Keep the dialog open on error so the user can fix the issue
     }
   };
   
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (selectedUser) {
-      deleteUser(selectedUser.id);
-      setIsDeleteDialogOpen(false);
+      try {
+        await deleteUser(selectedUser.id);
+        setIsDeleteDialogOpen(false);
+        toast({
+          title: "Usuário removido",
+          description: "O usuário foi removido com sucesso.",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Erro",
+          description: error.message || "Ocorreu um erro ao excluir o usuário",
+          variant: "destructive",
+        });
+      }
     }
   };
 

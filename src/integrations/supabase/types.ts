@@ -478,6 +478,28 @@ export type Database = {
         Args: { services: Json[] }
         Returns: undefined
       }
+      insert_profile: {
+        Args: {
+          profile_id: string
+          profile_name: string
+          profile_email: string
+          profile_role: string
+          profile_department_id?: string
+          profile_status?: string
+        }
+        Returns: undefined
+      }
+      update_profile: {
+        Args: {
+          profile_id: string
+          profile_name: string
+          profile_email: string
+          profile_role: string
+          profile_department_id?: string
+          profile_status?: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       agent_status_enum: "online" | "offline" | "break"
