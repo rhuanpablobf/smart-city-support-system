@@ -3,9 +3,8 @@ import React from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, UserRole } from '@/types';
+import { User } from '@/types';
 import { useForm } from 'react-hook-form';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { z } from 'zod';
@@ -14,12 +13,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 const userFormSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  role: z.enum(['admin', 'manager', 'agent']),
+  role: z.enum(['admin', 'manager', 'agent'] as const),
   department: z.string().min(2, 'Departamento deve ter pelo menos 2 caracteres'),
-  status: z.enum(['active', 'inactive'])
+  status: z.enum(['active', 'inactive'] as const)
 });
 
-type UserFormValues = z.infer<typeof userFormSchema>;
+export type UserFormValues = z.infer<typeof userFormSchema>;
 
 interface UserFormDialogProps {
   open: boolean;
@@ -40,13 +39,13 @@ export const UserFormDialog: React.FC<UserFormDialogProps> = ({
     defaultValues: user ? {
       name: user.name,
       email: user.email,
-      role: user.role,
+      role: user.role !== 'user' ? user.role : 'agent',
       department: user.department || '',
       status: user.status || 'active'
     } : {
       name: '',
       email: '',
-      role: 'agent' as UserRole,
+      role: 'agent',
       department: '',
       status: 'active'
     }

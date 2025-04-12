@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 export interface UserFormValues {
   name: string;
   email: string;
-  role: UserRole;
+  role: 'admin' | 'manager' | 'agent';
   department: string;
   status: 'active' | 'inactive';
 }

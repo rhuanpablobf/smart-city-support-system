@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,18 +13,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Edit, MoreHorizontal, Plus, Search, Trash2, UserPlus } from 'lucide-react';
-import { User } from '@/types';
+import { User, UserRole } from '@/types';
 import { useUserManagement, UserFormValues } from '@/hooks/useUserManagement';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { DeleteUserDialog } from '@/components/users/DeleteUserDialog';
 
-// Mock user data
-const mockUsers = [
+// Mock user data with correct typing for User interface
+const mockUsers: User[] = [
   {
     id: '1',
     name: 'Admin User',
     email: 'admin@example.com',
-    role: 'admin',
+    role: 'admin' as UserRole,
     department: 'TI',
     status: 'active'
   },
@@ -33,7 +32,7 @@ const mockUsers = [
     id: '2',
     name: 'Manager User',
     email: 'manager@example.com',
-    role: 'manager',
+    role: 'manager' as UserRole,
     department: 'Saúde',
     status: 'active'
   },
@@ -41,7 +40,7 @@ const mockUsers = [
     id: '3',
     name: 'Agent User',
     email: 'agent@example.com',
-    role: 'agent',
+    role: 'agent' as UserRole,
     department: 'Educação',
     status: 'active'
   },
@@ -49,7 +48,7 @@ const mockUsers = [
     id: '4',
     name: 'Carlos Santos',
     email: 'carlos@example.com',
-    role: 'agent',
+    role: 'agent' as UserRole,
     department: 'Saúde',
     status: 'active'
   },
@@ -57,7 +56,7 @@ const mockUsers = [
     id: '5',
     name: 'Mariana Silva',
     email: 'mariana@example.com',
-    role: 'manager',
+    role: 'manager' as UserRole,
     department: 'Finanças',
     status: 'inactive'
   }
