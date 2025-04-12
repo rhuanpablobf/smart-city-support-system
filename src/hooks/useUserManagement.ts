@@ -1,13 +1,12 @@
-
 import { useState, useEffect } from 'react';
 import { User, Department, Service, UserFormValues } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  fetchUsers as fetchUsersService,
-  addUser as addUserService,
-  updateUser as updateUserService,
-  deleteUser as deleteUserService
-} from '@/services/userService';
+  fetchUsers,
+  addUser,
+  updateUser,
+  deleteUser 
+} from '@/services/user';
 import { fetchDepartments as fetchDepartmentsService } from '@/services/departmentService';
 import { fetchServices as fetchServicesService, getDepartmentName } from '@/services/serviceService';
 
@@ -26,7 +25,7 @@ export function useUserManagement() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const fetchedUsers = await fetchUsersService();
+      const fetchedUsers = await fetchUsers();
       setUsers(fetchedUsers);
     } catch (error: any) {
       toast({
@@ -92,7 +91,7 @@ export function useUserManagement() {
         status: userData.status || 'active'
       };
       
-      const newUser = await addUserService(userDataWithStatus);
+      const newUser = await addUser(userDataWithStatus);
       
       // Update local state
       setUsers(prevUsers => [...prevUsers, newUser]);
@@ -122,7 +121,7 @@ export function useUserManagement() {
         status: userData.status || 'active'
       };
       
-      await updateUserService(userId, userDataWithStatus);
+      await updateUser(userId, userDataWithStatus);
       
       // Fetch department name for display
       const departmentName = await getDepartmentName(userData.department_id || '');
@@ -161,7 +160,7 @@ export function useUserManagement() {
   // Delete user
   const deleteUser = async (userId: string) => {
     try {
-      await deleteUserService(userId);
+      await deleteUser(userId);
       
       // Update local state
       setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
