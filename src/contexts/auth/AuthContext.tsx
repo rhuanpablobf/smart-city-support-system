@@ -70,8 +70,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     };
     
-    checkCurrentUser();
-    
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event);
@@ -97,11 +95,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
           };
           setCurrentUser(user);
         }
+        setLoading(false);
       } else if (event === 'SIGNED_OUT') {
         console.log("User signed out");
         setCurrentUser(null);
+        setLoading(false);
       }
     });
+    
+    // Inicialize a verificação da sessão
+    checkCurrentUser();
     
     return () => {
       authListener?.subscription.unsubscribe();

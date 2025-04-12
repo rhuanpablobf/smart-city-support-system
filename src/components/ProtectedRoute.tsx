@@ -14,25 +14,29 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const location = useLocation();
   
   if (loading) {
-    // You could render a loading spinner here
+    // Mostrar um spinner de carregamento enquanto verifica a autenticação
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-10 h-10 border-4 border-chatbot-primary border-t-transparent rounded-full animate-spin"></div>
+        <p className="ml-4 text-gray-600">Verificando permissões...</p>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    // Redirect to login if user is not authenticated
+    // Redirecionar para login se o usuário não estiver autenticado
+    console.log("User not authenticated, redirecting to login");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (requiredRole && !hasPermission(requiredRole)) {
-    // Redirect to unauthorized page if user doesn't have required role
+    // Redirecionar para página não autorizada se o usuário não tiver a função necessária
+    console.log("User does not have required role:", requiredRole);
     return <Navigate to="/unauthorized" replace />;
   }
 
-  // User is authenticated and has required role
+  // Usuário está autenticado e tem a função necessária
+  console.log("User is authenticated with required permissions");
   return <>{children}</>;
 };
 

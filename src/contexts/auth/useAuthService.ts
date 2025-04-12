@@ -73,6 +73,7 @@ export function useAuthService() {
 
   const logout = async () => {
     try {
+      setLoading(true);
       await supabase.auth.signOut();
       setCurrentUser(null);
       toast({
@@ -85,6 +86,8 @@ export function useAuthService() {
         description: error.message || "Ocorreu um erro ao tentar desconectar",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 

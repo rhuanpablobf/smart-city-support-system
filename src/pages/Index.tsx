@@ -28,6 +28,9 @@ const Index = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
       <div className="w-10 h-10 border-4 border-chatbot-primary border-t-transparent rounded-full animate-spin"></div>
       <p className="mt-4 text-gray-600">Carregando...</p>
+      {loading && (
+        <p className="mt-2 text-sm text-gray-500">Verificando autenticação...</p>
+      )}
     </div>
   );
 };
