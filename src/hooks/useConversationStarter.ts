@@ -66,7 +66,7 @@ export const useConversationStarter = ({
         .single();
 
       if (error) {
-        console.error("Detalhes do erro:", error);
+        console.error("Detalhes do erro ao criar conversa:", error);
         throw error;
       }
       

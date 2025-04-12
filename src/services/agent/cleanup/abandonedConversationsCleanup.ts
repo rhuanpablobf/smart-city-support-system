@@ -2,44 +2,46 @@
 import { supabase } from '@/integrations/supabase/client';
 
 /**
- * Limpa conversas abandonadas em estado de espera
+ * Limpa conversas abandonadas em espera (sem atividade por mais de 3 minutos)
+ * e registra como abandonadas para estatísticas
  */
 export const cleanAbandonedWaitingConversations = async () => {
   try {
-    const threeMinutesAgo = new Date();
-    threeMinutesAgo.setMinutes(threeMinutesAgo.getMinutes() - 3);
+    // Pegar timestamp de 3 minutos atrás
+    const thresholdTime = new Date();
+    thresholdTime.setMinutes(thresholdTime.getMinutes() - 3);
+    const thresholdTimeIso = thresholdTime.toISOString();
     
-    // Marcar conversas abandonadas
-    const { data, error } = await supabase
+    // Buscar conversas inativas (sem mensagens recentes)
+    const { data: inactiveConversations, error } = await supabase
       .from('conversations')
-      .update({ 
-        status: 'closed',  // Using 'closed' status which is in the enum
-        updated_at: new Date().toISOString()
-      })
+      .select('id')
       .eq('status', 'waiting')
-      .lt('last_message_at', threeMinutesAgo.toISOString())
-      .select();
-      
-    if (error) {
-      console.error("Erro ao limpar conversas abandonadas:", error);
-    } else if (data && data.length > 0) {
-      console.log(`${data.length} conversas marcadas como abandonadas`);
-      
-      // Registrar em relatório as conversas abandonadas
-      for (const conversation of data) {
-        await supabase
-          .from('satisfaction_surveys')
-          .insert({
-            conversation_id: conversation.id,
-            rating: 0,
-            comment: "Cliente desistiu da fila"
-          });
-      }
+      .lt('last_message_at', thresholdTimeIso);
+    
+    if (error) throw error;
+    
+    // Se não houver conversas abandonadas, encerre
+    if (!inactiveConversations || inactiveConversations.length === 0) {
+      return;
     }
     
-    return true;
+    console.log(`Encontradas ${inactiveConversations.length} conversas abandonadas`);
+    
+    // Registrar conversas abandonadas para estatísticas
+    const abandonedIds = inactiveConversations.map(conv => conv.id);
+
+    // Registrar o status de abandono nas conversas
+    const { error: updateError } = await supabase
+      .from('conversations')
+      .update({ status: 'abandoned' })
+      .in('id', abandonedIds);
+    
+    if (updateError) throw updateError;
+    
+    console.log(`${inactiveConversations.length} conversas marcadas como abandonadas`);
   } catch (error) {
     console.error("Erro ao limpar conversas abandonadas:", error);
-    return false;
+    throw error;
   }
 };

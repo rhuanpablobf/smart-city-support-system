@@ -37,7 +37,10 @@ export const fetchAgentConversations = async (agentId?: string) => {
       .eq('status', 'active')
       .order('last_message_at', { ascending: false });
 
-    if (activeError) throw activeError;
+    if (activeError) {
+      console.error("Erro ao buscar conversas ativas:", activeError);
+      throw activeError;
+    }
     
     // Buscar conversas em espera
     const { data: waitingConversations, error: waitingError } = await supabase
@@ -58,7 +61,10 @@ export const fetchAgentConversations = async (agentId?: string) => {
       .eq('status', 'waiting')
       .order('created_at', { ascending: true });
       
-    if (waitingError) throw waitingError;
+    if (waitingError) {
+      console.error("Erro ao buscar conversas em espera:", waitingError);
+      throw waitingError;
+    }
     
     // Buscar conversas sendo atendidas pelo bot (limitando a 100 para evitar problemas de performance)
     const { data: botConversations, error: botError } = await supabase
@@ -80,8 +86,13 @@ export const fetchAgentConversations = async (agentId?: string) => {
       .order('last_message_at', { ascending: false })
       .limit(100);
       
-    if (botError) throw botError;
+    if (botError) {
+      console.error("Erro ao buscar conversas atendidas pelo bot:", botError);
+      throw botError;
+    }
     
+    console.log("Conversas ativas:", activeConversations?.length || 0);
+    console.log("Conversas em espera:", waitingConversations?.length || 0);
     console.log("Conversas bot:", botConversations?.length || 0);
     
     return {

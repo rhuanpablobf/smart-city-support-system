@@ -1,9 +1,11 @@
 
 import React from 'react';
 import { useOverviewData } from '@/hooks/useOverviewData';
+import { useServiceAttendanceData } from '@/hooks/useServiceAttendanceData';
 import StatsCardGrid from './cards/StatsCardGrid';
 import DailyAttendancesChart from './charts/DailyAttendancesChart';
 import DepartmentPieChart from './charts/DepartmentPieChart';
+import ServiceAttendancesChart from './charts/ServiceAttendancesChart';
 
 interface OverviewTabProps {
   period: string;
@@ -22,6 +24,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 }) => {
   const filters = { period, department, service, startDate, endDate };
   const { stats, dailyData, departmentData, loading } = useOverviewData(filters);
+  const { data: serviceData, loading: serviceLoading } = useServiceAttendanceData(filters);
 
   return (
     <div className="space-y-4">
@@ -37,6 +40,13 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
         <DepartmentPieChart 
           data={departmentData} 
           loading={loading} 
+        />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <ServiceAttendancesChart 
+          data={serviceData}
+          loading={serviceLoading}
         />
       </div>
     </div>

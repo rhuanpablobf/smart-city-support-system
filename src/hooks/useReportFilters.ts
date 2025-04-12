@@ -64,7 +64,9 @@ export const useReportFilters = ({
   // Actions to update individual state properties
   const actions: ReportFiltersActions = {
     setPeriod: (value) => updateState({ period: value }),
-    setDepartment: (value) => updateState({ department: value }),
+    setDepartment: (value) => {
+      updateState({ department: value, service: 'all' });
+    },
     setService: (value) => updateState({ service: value }),
     setStartDate: (date) => updateState({ startDate: date }),
     setEndDate: (date) => updateState({ endDate: date }),
@@ -94,11 +96,12 @@ export const useReportFilters = ({
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        // If department is "all", fetch all services
+        // Constrói a query base para selecionar serviços
         let query = supabase
           .from('services')
           .select('id, name');
         
+        // Se um departamento específico for selecionado, filtra por ele
         if (state.department !== 'all') {
           query = query.eq('department_id', state.department);
         }
@@ -106,12 +109,9 @@ export const useReportFilters = ({
         const { data, error } = await query;
         
         if (error) throw error;
+        
         setServices(data || []);
-
-        // Reset the service selection when department changes
-        if (state.service !== 'all') {
-          updateState({ service: 'all' });
-        }
+        console.log(`Serviços carregados para o departamento ${state.department}:`, data?.length || 0);
       } catch (error) {
         console.error('Erro ao carregar serviços:', error);
       }
