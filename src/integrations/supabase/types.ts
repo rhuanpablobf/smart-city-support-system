@@ -9,16 +9,366 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      agent_statuses: {
+        Row: {
+          active_chats: number
+          id: string
+          last_active_at: string
+          queue_position: number | null
+          status: Database["public"]["Enums"]["agent_status_enum"]
+          updated_at: string
+        }
+        Insert: {
+          active_chats?: number
+          id: string
+          last_active_at?: string
+          queue_position?: number | null
+          status?: Database["public"]["Enums"]["agent_status_enum"]
+          updated_at?: string
+        }
+        Update: {
+          active_chats?: number
+          id?: string
+          last_active_at?: string
+          queue_position?: number | null
+          status?: Database["public"]["Enums"]["agent_status_enum"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_statuses_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attachments: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_size: number
+          file_type: string
+          id: string
+          message_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_size: number
+          file_type: string
+          id?: string
+          message_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          message_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_interactions: {
+        Row: {
+          answer: string
+          conversation_id: string
+          id: string
+          question: string
+          step: string
+          timestamp: string
+        }
+        Insert: {
+          answer: string
+          conversation_id: string
+          id?: string
+          question: string
+          step: string
+          timestamp?: string
+        }
+        Update: {
+          answer?: string
+          conversation_id?: string
+          id?: string
+          question?: string
+          step?: string
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_interactions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          department_id: string | null
+          id: string
+          inactivity_warnings: number
+          last_message_at: string
+          service_id: string | null
+          status: Database["public"]["Enums"]["conversation_status_enum"]
+          updated_at: string
+          user_cpf: string
+          user_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          inactivity_warnings?: number
+          last_message_at?: string
+          service_id?: string | null
+          status?: Database["public"]["Enums"]["conversation_status_enum"]
+          updated_at?: string
+          user_cpf: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          inactivity_warnings?: number
+          last_message_at?: string
+          service_id?: string | null
+          status?: Database["public"]["Enums"]["conversation_status_enum"]
+          updated_at?: string
+          user_cpf?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          id: string
+          read: boolean
+          sender_id: string
+          sender_type: Database["public"]["Enums"]["sender_type_enum"]
+          timestamp: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          id?: string
+          read?: boolean
+          sender_id: string
+          sender_type: Database["public"]["Enums"]["sender_type_enum"]
+          timestamp?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          id?: string
+          read?: boolean
+          sender_id?: string
+          sender_type?: Database["public"]["Enums"]["sender_type_enum"]
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar: string | null
+          created_at: string
+          department_id: string | null
+          email: string | null
+          id: string
+          max_simultaneous_chats: number | null
+          name: string | null
+          role: Database["public"]["Enums"]["user_role_enum"]
+          updated_at: string
+        }
+        Insert: {
+          avatar?: string | null
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          id: string
+          max_simultaneous_chats?: number | null
+          name?: string | null
+          role?: Database["public"]["Enums"]["user_role_enum"]
+          updated_at?: string
+        }
+        Update: {
+          avatar?: string | null
+          created_at?: string
+          department_id?: string | null
+          email?: string | null
+          id?: string
+          max_simultaneous_chats?: number | null
+          name?: string | null
+          role?: Database["public"]["Enums"]["user_role_enum"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      satisfaction_surveys: {
+        Row: {
+          comment: string | null
+          conversation_id: string
+          id: string
+          rating: number
+          submitted_at: string
+        }
+        Insert: {
+          comment?: string | null
+          conversation_id: string
+          id?: string
+          rating: number
+          submitted_at?: string
+        }
+        Update: {
+          comment?: string | null
+          conversation_id?: string
+          id?: string
+          rating?: number
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "satisfaction_surveys_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      services: {
+        Row: {
+          created_at: string
+          department_id: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: { _role: Database["public"]["Enums"]["user_role_enum"] }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      agent_status_enum: "online" | "offline" | "break"
+      conversation_status_enum: "bot" | "waiting" | "active" | "closed"
+      sender_type_enum: "bot" | "agent" | "user"
+      user_role_enum: "admin" | "manager" | "agent" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +483,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      agent_status_enum: ["online", "offline", "break"],
+      conversation_status_enum: ["bot", "waiting", "active", "closed"],
+      sender_type_enum: ["bot", "agent", "user"],
+      user_role_enum: ["admin", "manager", "agent", "user"],
+    },
   },
 } as const

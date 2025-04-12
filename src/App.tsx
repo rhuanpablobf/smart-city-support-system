@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -18,8 +18,14 @@ import ChatbotConfig from "./pages/ChatbotConfig";
 import ProfileSettings from "./pages/ProfileSettings";
 import UsersManagement from "./pages/UsersManagement";
 import Reports from "./pages/Reports";
+import { createDemoUsers } from "./utils/seedDemoUsers";
 
 const queryClient = new QueryClient();
+
+// Create demo users in development mode
+if (import.meta.env.DEV) {
+  createDemoUsers().catch(console.error);
+}
 
 const App = () => (
   <React.StrictMode>

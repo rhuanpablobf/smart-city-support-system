@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -27,6 +28,21 @@ const Login = () => {
     } catch (error) {
       console.error('Login failed:', error);
       // Error toast is handled in the AuthContext
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithDemoAccount = async (demoType: 'admin' | 'manager' | 'agent') => {
+    setIsLoading(true);
+    const demoEmail = `${demoType}@example.com`;
+    const demoPassword = 'password123';
+    
+    try {
+      await login(demoEmail, demoPassword);
+      navigate(from);
+    } catch (error) {
+      console.error(`Demo login failed for ${demoType}:`, error);
     } finally {
       setIsLoading(false);
     }
@@ -80,12 +96,38 @@ const Login = () => {
               >
                 {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
-              <div className="text-sm text-gray-500 mt-4">
-                <p>Para demonstração, use:</p>
-                <p>Admin: admin@example.com</p>
-                <p>Gerente: manager@example.com</p>
-                <p>Atendente: agent@example.com</p>
-                <p>Senha: qualquer valor</p>
+              
+              <div className="mt-6 w-full">
+                <p className="text-sm text-gray-500 mb-3 text-center">Para demonstração, use:</p>
+                <div className="grid gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => loginWithDemoAccount('admin')}
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    Entrar como Admin
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => loginWithDemoAccount('manager')}
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    Entrar como Gerente
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => loginWithDemoAccount('agent')}
+                    disabled={isLoading}
+                    className="w-full"
+                  >
+                    Entrar como Atendente
+                  </Button>
+                </div>
               </div>
             </CardFooter>
           </form>

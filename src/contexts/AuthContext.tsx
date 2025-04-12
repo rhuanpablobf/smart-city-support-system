@@ -2,6 +2,7 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '@/types';
 import { useToast } from "@/components/ui/use-toast";
+import { supabase } from '@/integrations/supabase/client';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -19,34 +20,6 @@ interface AuthProviderProps {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Mock users for demo
-const MOCK_USERS: User[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-    avatar: '',
-  },
-  {
-    id: '2',
-    name: 'Manager User',
-    email: 'manager@example.com',
-    role: 'manager',
-    avatar: '',
-    department: 'Health',
-  },
-  {
-    id: '3',
-    name: 'Agent User',
-    email: 'agent@example.com',
-    role: 'agent',
-    avatar: '',
-    department: 'Education',
-    maxSimultaneousChats: 5,
-  },
-];
-
 const ROLE_HIERARCHY: { [key in UserRole]: number } = {
   'admin': 3,
   'manager': 2,
@@ -59,46 +32,130 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const { toast } = useToast();
 
-  // Check if user is already logged in
+  // Check if user is already logged in with Supabase
   useEffect(() => {
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
+    const checkCurrentUser = async () => {
       try {
-        setCurrentUser(JSON.parse(savedUser));
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error checking session:", error.message);
+          return;
+        }
+        
+        if (session) {
+          // Fetch the user profile from our profiles table
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profileError) {
+            console.error("Error fetching profile:", profileError.message);
+            return;
+          }
+          
+          if (profileData) {
+            const user: User = {
+              id: profileData.id,
+              name: profileData.name || session.user.email?.split('@')[0] || '',
+              email: profileData.email || session.user.email || '',
+              role: profileData.role,
+              avatar: profileData.avatar || '',
+              department: profileData.department_id,
+              maxSimultaneousChats: profileData.max_simultaneous_chats
+            };
+            setCurrentUser(user);
+          }
+        }
       } catch (error) {
-        console.error("Failed to parse saved user:", error);
-        localStorage.removeItem('currentUser');
+        console.error("Session check failed:", error);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+    
+    checkCurrentUser();
+    
+    // Set up auth state listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        // Fetch the profile after sign in
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+          
+        if (profileData) {
+          const user: User = {
+            id: profileData.id,
+            name: profileData.name || session.user.email?.split('@')[0] || '',
+            email: profileData.email || session.user.email || '',
+            role: profileData.role,
+            avatar: profileData.avatar || '',
+            department: profileData.department_id,
+            maxSimultaneousChats: profileData.max_simultaneous_chats
+          };
+          setCurrentUser(user);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+      }
+    });
+    
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In a real app, you would validate credentials with an API
-      const user = MOCK_USERS.find(u => u.email === email);
-      if (!user) {
-        throw new Error('Invalid email or password');
-      }
-      
-      // In a real app, you would validate the password
-      
-      // Save user to state and localStorage
-      setCurrentUser(user);
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      
-      toast({
-        title: "Login successful",
-        description: `Welcome back, ${user.name}!`,
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
-    } catch (error) {
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        // Fetch the user profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+        
+        if (profileError) {
+          console.error("Error fetching profile:", profileError.message);
+          throw new Error("Unable to fetch user profile");
+        }
+        
+        // Create user object from profile data
+        const user: User = {
+          id: profileData.id,
+          name: profileData.name || data.user.email?.split('@')[0] || '',
+          email: profileData.email || data.user.email || '',
+          role: profileData.role,
+          avatar: profileData.avatar || '',
+          department: profileData.department_id,
+          maxSimultaneousChats: profileData.max_simultaneous_chats
+        };
+        
+        setCurrentUser(user);
+        
+        toast({
+          title: "Login bem-sucedido",
+          description: `Bem-vindo de volta, ${user.name}!`,
+        });
+      }
+    } catch (error: any) {
       toast({
-        title: "Login failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        title: "Falha no login",
+        description: error.message || "Ocorreu um erro desconhecido",
         variant: "destructive",
       });
       throw error;
@@ -107,13 +164,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('currentUser');
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out.",
-    });
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao desconectar",
+        description: error.message || "Ocorreu um erro ao tentar desconectar",
+        variant: "destructive",
+      });
+    }
   };
 
   const hasPermission = (requiredRole: UserRole): boolean => {
