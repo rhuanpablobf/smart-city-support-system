@@ -67,15 +67,17 @@ export function useUserManagement() {
     }
   };
 
-  // Effect to fetch data from Supabase
+  // Effect to fetch data from Supabase - fixing the TypeScript error by properly awaiting the functions
   useEffect(() => {
-    const fetchData = async () => {
-      await Promise.all([
-        loadUsers(),
-        fetchDepartments(),
-        fetchServices()
-      ]);
-    };
+    async function fetchData() {
+      try {
+        await loadUsers();
+        await fetchDepartments();
+        await fetchServices();
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    }
     
     fetchData();
   }, []);
