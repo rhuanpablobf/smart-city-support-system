@@ -445,9 +445,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_agent_services: {
+        Args: { agent_id_param: string }
+        Returns: undefined
+      }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["user_role_enum"] }
         Returns: boolean
+      }
+      insert_agent_services: {
+        Args: { services: Json[] }
+        Returns: undefined
       }
     }
     Enums: {

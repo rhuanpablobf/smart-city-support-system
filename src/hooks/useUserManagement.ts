@@ -46,12 +46,9 @@ export function useUserManagement() {
         maxSimultaneousChats: profile.max_simultaneous_chats || 5
       }));
 
-      setUsers(formattedUsers);
-
       // Buscar serviços associados a cada agente/gerente
       for (const user of formattedUsers) {
         if (user.role === 'agent' || user.role === 'manager') {
-          // Use the raw SQL query instead of the client since the table might not be in the types yet
           const { data: agentServices, error: servicesError } = await supabase
             .from('agent_services')
             .select('service_id')
@@ -169,18 +166,17 @@ export function useUserManagement() {
           service_id: serviceId
         }));
         
-        // Use a raw SQL query to insert data
-        const { error: servicesError } = await supabase
-          .rpc('insert_agent_services', { 
-            services: agentServicesData 
-          });
+        // Use RPC to insert data
+        const { error: servicesError } = await supabase.rpc('insert_agent_services', { 
+          services: agentServicesData 
+        });
           
         if (servicesError) {
           console.error("Error adding agent services:", servicesError);
           toast({
             title: "Aviso",
             description: "Usuário criado, mas houve um erro ao associar serviços.",
-            variant: "warning",
+            variant: "destructive",
           });
         }
       }
@@ -246,7 +242,7 @@ export function useUserManagement() {
 
       // Atualizar serviços do usuário (excluir existentes e inserir novos)
       if (userData.role === 'agent' || userData.role === 'manager') {
-        // Remover associações existentes usando raw SQL
+        // Remover associações existentes usando RPC
         const { error: deleteError } = await supabase
           .rpc('delete_agent_services', { agent_id_param: userId });
           
@@ -262,7 +258,7 @@ export function useUserManagement() {
             service_id: serviceId
           }));
           
-          // Use raw SQL to insert the new services
+          // Use RPC to insert the new services
           const { error: insertError } = await supabase
             .rpc('insert_agent_services', { 
               services: agentServicesData 
