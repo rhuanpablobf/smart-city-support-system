@@ -72,22 +72,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.error("Erro ao buscar perfil:", profileError);
           }
           
-          // Determinar o papel do usuário corretamente
+          // Determinar o papel do usuário
           let userRole: UserRole = 'user'; // default role
           
-          // Se temos dados do perfil, usar o papel do perfil
-          if (profileData && profileData.role) {
-            userRole = profileData.role as UserRole;
-            console.log("Papel obtido do perfil:", userRole);
-          } else {
-            // Alternativa baseada no email (fallback)
-            if (userData.email) {
-              if (userData.email.includes('admin')) userRole = 'admin';
-              else if (userData.email.includes('manager')) userRole = 'manager';
-              else if (userData.email.includes('agent')) userRole = 'agent';
-            }
+          // Verificamos primeiro se é uma conta de demonstração pelo email
+          if (userData.email) {
+            // Contas de demonstração com email específico
+            if (userData.email === 'admin@example.com') userRole = 'admin';
+            else if (userData.email === 'manager@example.com') userRole = 'manager';
+            else if (userData.email === 'agent@example.com') userRole = 'agent';
+            // Verificação genérica por substring
+            else if (userData.email.includes('admin')) userRole = 'admin';
+            else if (userData.email.includes('manager')) userRole = 'manager';
+            else if (userData.email.includes('agent')) userRole = 'agent';
+            
             console.log("Papel determinado pelo email:", userRole);
           }
+          
+          // Se temos dados do perfil com uma função definida e não é uma conta de demonstração,
+          // use a função do perfil
+          if (profileData && 
+              profileData.role && 
+              !userData.email?.endsWith('@example.com')) {
+            userRole = profileData.role as UserRole;
+            console.log("Papel obtido do perfil:", userRole);
+          }
+          
+          console.log("Papel final determinado:", userRole);
           
           // Criar o objeto de usuário usando os metadados e dados do perfil
           const user = {

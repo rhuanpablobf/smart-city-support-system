@@ -47,20 +47,22 @@ export function useAuthService() {
         console.error("Erro ao buscar perfil:", profileError);
       }
       
-      // Determinar o papel do usuário corretamente
+      // Determinar o papel do usuário utilizando primeiro o email para contas de demonstração
       let userRole: UserRole = 'user'; // default role
       
-      // Se temos dados do perfil, usar o papel do perfil
-      if (profileData && profileData.role) {
-        userRole = profileData.role as UserRole;
-        console.log("Papel obtido do perfil:", userRole);
-      } else {
-        // Alternativa baseada no email (fallback)
+      // Primeiro verificamos se é uma conta de demonstração pelo email
+      if (data.user.email) {
         userRole = determineUserRole(data.user.email);
-        console.log("Papel determinado pelo email:", userRole);
+        console.log("Papel inicial determinado pelo email:", userRole);
       }
       
-      console.log("Papel determinado:", userRole);
+      // Se temos dados do perfil com uma função definida e não é uma conta de demonstração, use a função do perfil
+      if (profileData && profileData.role && !isDemoAccount(data.user.email)) {
+        userRole = profileData.role as UserRole;
+        console.log("Papel obtido do perfil:", userRole);
+      }
+      
+      console.log("Papel final determinado:", userRole);
       
       // Criar objeto de usuário a partir dos metadados e dados do perfil
       const user: User = {
@@ -97,10 +99,22 @@ export function useAuthService() {
     }
   };
 
+  // Verifica se é uma conta de demonstração
+  const isDemoAccount = (email: string | undefined): boolean => {
+    if (!email) return false;
+    return email.endsWith('@example.com');
+  };
+
   // Função de utilitário para determinar o papel do usuário com base no email
   const determineUserRole = (email: string | undefined): UserRole => {
     if (!email) return 'user';
     
+    // Contas de demonstração com email específico
+    if (email === 'admin@example.com') return 'admin';
+    if (email === 'manager@example.com') return 'manager';
+    if (email === 'agent@example.com') return 'agent';
+    
+    // Verificação genérica por substring
     if (email.includes('admin')) return 'admin';
     if (email.includes('manager')) return 'manager';
     if (email.includes('agent')) return 'agent';

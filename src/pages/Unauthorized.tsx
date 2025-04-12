@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/auth';
+import { useToast } from "@/components/ui/use-toast";
 
 const Unauthorized = () => {
   const navigate = useNavigate();
   const { currentUser, userRole, isAuthenticated, logout } = useAuth();
+  const { toast } = useToast();
   
   useEffect(() => {
     // Log diagnósticos para ajudar a depurar
@@ -16,20 +18,48 @@ const Unauthorized = () => {
       userRole,
       currentUser
     });
-  }, [isAuthenticated, userRole, currentUser]);
+    
+    // Se não estiver autenticado, redirecionar para login
+    if (!isAuthenticated) {
+      console.log("Usuário não autenticado, redirecionando para login");
+      navigate('/login', { replace: true });
+    }
+  }, [isAuthenticated, userRole, currentUser, navigate]);
   
   const handleGoHome = () => {
     // Navegar diretamente para a página de login em vez da página inicial
     // para evitar loops de redirecionamento
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
   
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login');
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+      navigate('/login', { replace: true });
     } catch (error) {
       console.error("Erro ao fazer logout:", error);
+      toast({
+        title: "Erro ao fazer logout",
+        description: "Ocorreu um erro ao tentar desconectar.",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const goToHomePage = () => {
+    // Tentar navegar para a página apropriada baseada no papel
+    if (userRole === 'admin') {
+      navigate('/users', { replace: true });
+    } else if (userRole === 'manager') {
+      navigate('/dashboard', { replace: true });
+    } else if (userRole === 'agent') {
+      navigate('/agent', { replace: true });
+    } else {
+      navigate('/', { replace: true });
     }
   };
   
@@ -88,6 +118,14 @@ const Unauthorized = () => {
               Ir para Atendimentos
             </Button>
           )}
+          
+          <Button
+            onClick={goToHomePage}
+            variant="outline"
+            className="w-full"
+          >
+            Tentar página inicial correspondente ao seu papel
+          </Button>
         </div>
       </div>
     </div>
