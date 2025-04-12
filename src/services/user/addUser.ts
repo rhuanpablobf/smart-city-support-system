@@ -1,99 +1,103 @@
 
-import { User, UserFormValues } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
+import { UserFormValues, User } from '@/types';
 
 /**
- * Add a new user to the system
+ * Generates a random but secure password
  */
-export const addUser = async (userData: UserFormValues): Promise<User> => {
+const generateRandomPassword = (): string => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
+  let password = '';
+  
+  // Generate a password with at least 8 characters
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
+  return password;
+};
+
+/**
+ * Creates a new user in Supabase Auth and adds their profile
+ */
+export const addUser = async (formData: UserFormValues): Promise<User> => {
   try {
-    // Create new user ID
-    const uuid = uuidv4();
+    // Generate a random password for the user - they'll reset it later
+    const password = generateRandomPassword();
     
-    // Check if email already exists
-    const { data: existingUser, error: checkError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', userData.email)
-      .single();
-      
-    if (existingUser) {
-      throw new Error('A user with this email already exists');
-    }
-    
-    if (checkError && checkError.code !== 'PGRST116') {
-      // PGRST116 is the error code for "not found", which is expected
-      console.error('Error checking existing email:', checkError);
-      throw checkError;
-    }
-    
-    // Insert profile in profiles table via RPC to avoid recursion issues
-    const { error } = await supabase.rpc(
-      // Add 'as any' type assertion to fix the TypeScript error
-      'insert_profile' as any, 
-      {
-        profile_id: uuid,
-        profile_name: userData.name, 
-        profile_email: userData.email,
-        profile_role: userData.role,
-        profile_department_id: userData.department_id,
-        profile_status: userData.status || 'active'
+    // Create the user in auth.users
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: formData.email,
+      password,
+      email_confirm: true, // Skip email verification
+      user_metadata: { 
+        name: formData.name
       }
-    );
-
-    if (error) {
-      console.error('Error adding user:', error.message);
-      throw error;
+    });
+    
+    if (authError) throw authError;
+    
+    const userId = authData.user.id;
+    
+    // Insert the user's profile data
+    const { error: profileError } = await supabase.rpc('insert_profile', {
+      profile_id: userId,
+      profile_name: formData.name,
+      profile_email: formData.email,
+      profile_role: formData.role,
+      profile_department_id: formData.department_id || null,
+      profile_status: formData.status
+    });
+    
+    if (profileError) throw profileError;
+    
+    // Update max_simultaneous_chats separately
+    if (formData.maxSimultaneousChats) {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          max_simultaneous_chats: formData.maxSimultaneousChats
+        })
+        .eq('id', userId);
+        
+      if (updateError) throw updateError;
     }
-
-    // If manager or agent and has services selected, insert in agent_services table
-    if ((userData.role === 'agent' || userData.role === 'manager') && 
-        userData.serviceIds && 
-        userData.serviceIds.length > 0) {
-      
-      // Create array of agent_service objects
-      const agentServicesData = userData.serviceIds.map(serviceId => ({
-        agent_id: uuid,
+    
+    // If service IDs are provided, associate the agent with these services
+    if (formData.serviceIds && formData.serviceIds.length > 0) {
+      const serviceData = formData.serviceIds.map(serviceId => ({
+        agent_id: userId,
         service_id: serviceId
       }));
       
-      // Use RPC function to insert data
-      const { error: servicesError } = await supabase.rpc(
-        'insert_agent_services' as any, 
-        { services: agentServicesData }
-      );
-        
-      if (servicesError) {
-        console.error("Error adding agent services:", servicesError);
-        throw servicesError;
-      }
+      await supabase.rpc('insert_agent_services', {
+        services: serviceData
+      });
     }
     
-    // Fetch department name for display
-    let departmentName = null;
-    if (userData.department_id) {
-      const { data: deptData } = await supabase
-        .from('departments')
-        .select('name')
-        .eq('id', userData.department_id)
-        .single();
-        
-      if (deptData) departmentName = deptData.name;
-    }
-
-    // Return the new user
-    return {
-      id: uuid,
-      name: userData.name,
-      email: userData.email,
-      role: userData.role,
-      department: departmentName,
-      department_id: userData.department_id,
-      serviceIds: userData.serviceIds,
-      status: userData.status || 'active' // Ensure we always have a status value
+    // Get the department name for the created user
+    const { data: departmentData } = await supabase
+      .from('departments')
+      .select('name')
+      .eq('id', formData.department_id)
+      .single();
+    
+    // Return the created user
+    const newUser: User = {
+      id: userId,
+      name: formData.name,
+      email: formData.email,
+      role: formData.role,
+      department: departmentData || null,
+      department_id: formData.department_id || null,
+      serviceIds: formData.serviceIds || [],
+      status: formData.status,
+      avatar: '', // Default empty avatar
+      maxSimultaneousChats: formData.maxSimultaneousChats
     };
-  } catch (error) {
+    
+    return newUser;
+  } catch (error: any) {
     console.error('Error adding user:', error);
     throw error;
   }

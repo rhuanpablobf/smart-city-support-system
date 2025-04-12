@@ -12,9 +12,9 @@ interface MessageBubbleProps {
 }
 
 const MessageBubble = ({ message }: MessageBubbleProps) => {
-  const isUser = message.senderType === 'user';
-  const isBot = message.senderType === 'bot';
-  const isAgent = message.senderType === 'agent';
+  const isUser = message.type === 'user';
+  const isBot = message.type === 'bot';
+  const isAgent = message.type === 'agent';
   
   return (
     <div className={cn(

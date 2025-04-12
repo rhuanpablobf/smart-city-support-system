@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 export const useQAItemsData = (serviceId: string) => {
   const [newQA, setNewQA] = useState<Partial<QAItem>>({
-    serviceId,
+    service_id: serviceId,
     question: '',
     answer: '',
   });
@@ -30,7 +30,7 @@ export const useQAItemsData = (serviceId: string) => {
       
       return data.map(item => ({
         id: item.id,
-        serviceId: item.service_id,
+        service_id: item.service_id,
         question: item.question,
         answer: item.answer,
         hasImage: item.has_image,
@@ -48,7 +48,7 @@ export const useQAItemsData = (serviceId: string) => {
       const { data, error } = await supabase
         .from('qa_items')
         .insert({
-          service_id: qaItem.serviceId,
+          service_id: qaItem.service_id,
           question: qaItem.question,
           answer: qaItem.answer,
           has_image: qaItem.hasImage || false,
@@ -180,7 +180,7 @@ export const useQAItemsData = (serviceId: string) => {
 
   const resetForm = () => {
     setNewQA({
-      serviceId,
+      service_id: serviceId,
       question: '',
       answer: '',
       hasImage: false,

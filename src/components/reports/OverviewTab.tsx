@@ -45,7 +45,11 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 
       <div className="grid gap-4 md:grid-cols-2">
         <ServiceAttendancesChart 
-          data={serviceData}
+          data={serviceData.map(item => ({
+            name: item.name,
+            value: item.attendances,
+            color: `#${Math.floor(Math.random()*16777215).toString(16)}` // Random color
+          }))}
           loading={serviceLoading}
         />
       </div>

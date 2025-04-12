@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,13 +24,13 @@ type ServiceListProps = {
 };
 
 export const ServiceList = ({ departmentId }: ServiceListProps) => {
-  const [newService, setNewService] = useState<Service>({
+  const [newService, setNewService] = useState<Partial<Service>>({
     id: '',
     name: '',
     description: '',
     department_id: departmentId 
   });
-  const [editService, setEditService] = useState<Service | null>(null);
+  const [editService, setEditService] = useState<Partial<Service> | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [expandedServices, setExpandedServices] = useState<Record<string, boolean>>({});
@@ -54,7 +53,7 @@ export const ServiceList = ({ departmentId }: ServiceListProps) => {
 
   // Add service mutation
   const addServiceMutation = useMutation({
-    mutationFn: async (serviceData: Service) => {
+    mutationFn: async (serviceData: Partial<Service>) => {
       const { data, error } = await supabase
         .from('services')
         .insert({
@@ -82,7 +81,7 @@ export const ServiceList = ({ departmentId }: ServiceListProps) => {
 
   // Update service mutation
   const updateServiceMutation = useMutation({
-    mutationFn: async (serviceData: Service) => {
+    mutationFn: async (serviceData: Partial<Service>) => {
       const { data, error } = await supabase
         .from('services')
         .update({

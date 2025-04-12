@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Conversation } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -48,10 +49,10 @@ const ChatHeader = ({ conversation, closeChat }: ChatHeaderProps) => {
         <div className="ml-3">
           <div className="flex items-center">
             <p className="font-medium">
-              {conversation.userId || `CPF: ${conversation.userCpf}`}
+              {conversation.user_id || `CPF: ${conversation.userCpf}`}
             </p>
             <Badge className="ml-2" variant="outline">
-              {conversation.departmentId || 'Sem departamento'}
+              {conversation.department_id || 'Sem departamento'}
             </Badge>
           </div>
           <p className="text-sm text-gray-500">

@@ -11,13 +11,13 @@ export interface User {
   department_id: string | null;
   status: 'active' | 'inactive';
   maxSimultaneousChats: number;
-  serviceIds?: string[]; // Add the serviceIds property that was missing
+  serviceIds?: string[];
 }
 
 export interface Department {
   id: string;
   name: string;
-  description?: string; // Add description field that was referenced
+  description?: string;
 }
 
 export interface FAQItem {
@@ -26,7 +26,6 @@ export interface FAQItem {
   answer: string;
 }
 
-// Add or update ConversationStatus enum to include 'abandoned' and 'completed'
 export type ConversationStatus = 'bot' | 'waiting' | 'active' | 'closed' | 'abandoned' | 'completed';
 
 export interface Conversation {
@@ -46,11 +45,11 @@ export interface Conversation {
   lastMessageAt?: string;
 }
 
-// Add missing types that were referenced in errors
 export interface Service {
   id: string;
   name: string;
   department_id: string | null;
+  description?: string; // Add description property
 }
 
 export interface QAItem {
@@ -58,6 +57,11 @@ export interface QAItem {
   question: string;
   answer: string;
   service_id?: string;
+  hasImage?: boolean; // Add missing properties
+  imageUrl?: string;
+  hasLink?: boolean;
+  linkUrl?: string;
+  linkText?: string;
 }
 
 export interface ChatMessage {
@@ -67,6 +71,8 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   type: 'user' | 'agent' | 'system' | 'bot';
+  senderType?: 'user' | 'agent' | 'bot'; // Add senderType property
+  read?: boolean;
 }
 
 export interface UserFormValues {

@@ -1,175 +1,187 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AuthContextType, AuthProviderProps } from './types';
-import { useAuthService } from './useAuthService';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { User, UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
-import { UserRole } from '@/types';
+import { AuthContextType, ROLE_HIERARCHY } from './types';
 
+// Create auth context
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export function AuthProvider({ children }: AuthProviderProps) {
-  const {
-    currentUser,
-    setCurrentUser,
-    loading,
-    setLoading,
-    login,
-    logout,
-    hasPermission,
-    isAuthenticated,
-    userRole
-  } = useAuthService();
-
-  // Check if user is already logged in with Supabase
-  useEffect(() => {
-    console.log("AuthProvider inicializado, verificando autenticação");
-    let isMounted = true;
-    let authTimeout: NodeJS.Timeout;
-
-    // Set a global timeout to prevent being stuck in loading state
-    authTimeout = setTimeout(() => {
-      if (isMounted && loading) {
-        console.error("Verificação de autenticação expirou após 5 segundos");
-        setLoading(false);
-      }
-    }, 5000); // Reduzido para 5 segundos
-
-    const checkCurrentUser = async () => {
-      try {
-        console.log("Verificando sessão atual...");
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Erro ao verificar sessão:", error.message);
-          if (isMounted) setLoading(false);
-          return;
-        }
-        
-        if (!data.session) {
-          console.log("Nenhuma sessão encontrada, usuário não está autenticado");
-          if (isMounted) setLoading(false);
-          return;
-        }
-        
-        console.log("Sessão encontrada, usuário está autenticado");
-        
-        // Obter o usuário da sessão
-        const userData = data.session.user;
-        
-        try {
-          // Buscar perfil do usuário após autenticação usando RPC
-          const { data: profileData, error: profileError } = await supabase
-            .rpc('get_all_profiles_safe')
-            .then(response => {
-              if (response.error) {
-                return { data: null, error: response.error };
-              }
-              const userProfile = response.data.find((profile: any) => profile.id === userData.id);
-              return { data: userProfile || null, error: null };
-            });
-          
-          if (profileError) {
-            console.error("Erro ao buscar perfil:", profileError);
-          }
-          
-          // Determinar o papel do usuário
-          let userRole: UserRole = 'user'; // default role
-          
-          // Verificamos primeiro se é uma conta de demonstração pelo email
-          if (userData.email) {
-            // Contas de demonstração com email específico
-            if (userData.email === 'admin@example.com') userRole = 'admin';
-            else if (userData.email === 'manager@example.com') userRole = 'manager';
-            else if (userData.email === 'agent@example.com') userRole = 'agent';
-            // Verificação genérica por substring
-            else if (userData.email.includes('admin')) userRole = 'admin';
-            else if (userData.email.includes('manager')) userRole = 'manager';
-            else if (userData.email.includes('agent')) userRole = 'agent';
-            
-            console.log("Papel determinado pelo email:", userRole);
-          }
-          
-          // Se temos dados do perfil com uma função definida e não é uma conta de demonstração,
-          // use a função do perfil
-          if (profileData && 
-              profileData.role && 
-              !userData.email?.endsWith('@example.com')) {
-            userRole = profileData.role as UserRole;
-            console.log("Papel obtido do perfil:", userRole);
-          }
-          
-          console.log("Papel final determinado:", userRole);
-          
-          // Criar o objeto de usuário usando os metadados e dados do perfil
-          const user = {
-            id: userData.id,
-            name: profileData?.name || userData.email?.split('@')[0] || '',
-            email: userData.email || '',
-            role: userRole,
-            avatar: profileData?.avatar || '',
-            department: null,
-            department_id: profileData?.department_id || null,
-            status: profileData?.status as 'active' | 'inactive' || 'active',
-            maxSimultaneousChats: profileData?.max_simultaneous_chats || 5
-          };
-          
-          console.log("Usuário configurado a partir da sessão:", user);
-          if (isMounted) setCurrentUser(user);
-          
-        } catch (profileError: any) {
-          console.error("Erro ao buscar perfil:", profileError.message || profileError);
-        }
-      } catch (error: any) {
-        console.error("Verificação de sessão falhou:", error.message || error);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    
-    // Set up auth state listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Estado de autenticação alterado:", event);
-      
-      if (event === 'SIGNED_IN' && session) {
-        // Deixe o processo de login lidar com isso, não duplique a busca de perfil aqui
-        console.log("SIGNED_IN evento detectado, sessão disponível");
-      } else if (event === 'SIGNED_OUT') {
-        console.log("Usuário desconectado");
-        if (isMounted) {
-          setCurrentUser(null);
-          setLoading(false);
-        }
-      }
-    });
-    
-    // Check for current user
-    checkCurrentUser();
-    
-    return () => {
-      console.log("AuthProvider desmontado, limpeza");
-      isMounted = false;
-      clearTimeout(authTimeout);
-      authListener?.subscription.unsubscribe();
-    };
-  }, [setCurrentUser, setLoading]);
-  
-  const value = {
-    currentUser,
-    loading,
-    login,
-    logout,
-    isAuthenticated,
-    userRole,
-    hasPermission,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
+// Hook to use auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === null) {
-    throw new Error('useAuth deve ser usado dentro de um AuthProvider');
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
+
+// Auth provider component
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check active sessions
+    const getSession = async () => {
+      setLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          await fetchUserProfile(session.user.id);
+        }
+      } catch (error) {
+        console.error('Error checking authentication status:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    getSession();
+    
+    // Listen for auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN') {
+          if (session?.user) {
+            await fetchUserProfile(session.user.id);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setCurrentUser(null);
+        }
+      }
+    );
+    
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+  
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          id, name, email, avatar, role, status, max_simultaneous_chats,
+          department_id, departments:department_id(id, name)
+        `)
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        const serviceIdsResponse = await supabase
+          .from('agent_services')
+          .select('service_id')
+          .eq('agent_id', userId);
+          
+        const serviceIds = serviceIdsResponse?.data?.map(item => item.service_id) || [];
+        
+        const user: User = {
+          id: data.id,
+          name: data.name || 'User',
+          email: data.email || '',
+          role: data.role,
+          avatar: data.avatar || '',
+          status: data.status || 'active',
+          department: data.departments,
+          department_id: data.department_id,
+          maxSimultaneousChats: data.max_simultaneous_chats || 5,
+          serviceIds
+        };
+        
+        setCurrentUser(user);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+  
+  const login = async (email: string, password: string): Promise<User | void> => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) throw error;
+      
+      if (data.user) {
+        await fetchUserProfile(data.user.id);
+        return currentUser!; // Return user after login
+      }
+    } catch (error: any) {
+      console.error('Login error:', error.message);
+      throw error;
+    }
+  };
+  
+  const logout = async (): Promise<void> => {
+    try {
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+    } catch (error: any) {
+      console.error('Logout error:', error.message);
+    }
+  };
+
+  const updateUser = async (userData: Partial<User>): Promise<User> => {
+    try {
+      if (!currentUser) throw new Error("No user is currently logged in");
+
+      // Update the user profile in Supabase
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: userData.name,
+          email: userData.email,
+          avatar: userData.avatar,
+          department_id: userData.department_id,
+          max_simultaneous_chats: userData.maxSimultaneousChats,
+          status: userData.status
+        })
+        .eq('id', currentUser.id);
+
+      if (error) throw error;
+
+      // Update local state
+      const updatedUser = { ...currentUser, ...userData };
+      setCurrentUser(updatedUser);
+      
+      return updatedUser;
+    } catch (error: any) {
+      console.error('Update user error:', error.message);
+      throw error;
+    }
+  };
+  
+  // Check if the user has a specific role or higher
+  const hasPermission = (requiredRole: UserRole): boolean => {
+    if (!currentUser) return false;
+    
+    const userRoleLevel = ROLE_HIERARCHY[currentUser.role] || 0;
+    const requiredRoleLevel = ROLE_HIERARCHY[requiredRole] || 0;
+    
+    return userRoleLevel >= requiredRoleLevel;
+  };
+  
+  const value = {
+    currentUser,
+    setCurrentUser,
+    loading,
+    login,
+    logout,
+    updateUser,
+    isAuthenticated: !!currentUser,
+    userRole: currentUser?.role || null,
+    hasPermission
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};
+
+export default AuthContext;

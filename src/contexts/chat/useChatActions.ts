@@ -69,7 +69,7 @@ export const useChatActions = () => {
       // Update the conversation to show the time of the last message
       const updatedConv = {
         ...currentConversation,
-        lastMessageAt: new Date()
+        lastMessageAt: new Date().toISOString() // Converting Date to string
       };
       setCurrentConversation(updatedConv);
       

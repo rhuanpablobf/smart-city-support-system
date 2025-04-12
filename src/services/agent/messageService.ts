@@ -7,11 +7,11 @@ import { ChatMessage } from '@/types';
  */
 const formatMessage = (message: any): ChatMessage => ({
   id: message.id,
-  conversationId: message.conversation_id,
+  conversation_id: message.conversation_id,
   content: message.content,
-  senderId: message.sender_id,
-  senderType: message.sender_type,
-  timestamp: new Date(message.timestamp),
+  sender_id: message.sender_id,
+  type: message.sender_type, // Changed from senderType to type
+  timestamp: message.timestamp,
   read: message.read
 });
 
