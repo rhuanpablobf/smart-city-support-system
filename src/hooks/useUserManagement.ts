@@ -70,7 +70,11 @@ export function useUserManagement() {
   // Effect to fetch data from Supabase
   useEffect(() => {
     const fetchData = async () => {
-      await Promise.all([loadUsers(), fetchDepartments(), fetchServices()]);
+      await Promise.all([
+        loadUsers(),
+        fetchDepartments(),
+        fetchServices()
+      ]);
     };
     
     fetchData();
@@ -125,7 +129,9 @@ export function useUserManagement() {
       await updateUserService(userId, userDataWithStatus);
       
       // Fetch department name for display
-      const departmentName = await getDepartmentName(userData.department_id || '');
+      const departmentName = userData.department_id ? 
+        await getDepartmentName(userData.department_id) : 
+        null;
       
       // Update local state
       setUsers(prevUsers => 
