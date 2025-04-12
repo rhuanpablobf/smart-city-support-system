@@ -22,11 +22,13 @@ const ChatList = () => {
   return (
     <div className="h-full flex flex-col overflow-hidden bg-white">
       <div className="p-3 flex items-center space-x-2">
-        <Input 
-          placeholder="Buscar conversa..." 
-          className="h-9" 
-          prefixIcon={<Search className="h-4 w-4 text-gray-400" />}
-        />
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input 
+            placeholder="Buscar conversa..." 
+            className="h-9 pl-9" 
+          />
+        </div>
         <Button 
           onClick={startNewChat}
           variant="outline" 
