@@ -73,9 +73,9 @@ const ChatList = () => {
       // Reload conversations to reflect the change
       const data = await fetchAgentConversations();
       setConversations({
-        active: data.active,
-        waiting: data.waiting,
-        bot: data.bot
+        active: data.active || [],
+        waiting: data.waiting || [],
+        bot: data.bot || []
       });
       
       // Select the accepted conversation
