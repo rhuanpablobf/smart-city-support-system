@@ -79,3 +79,18 @@ export interface SatisfactionSurvey {
   comment?: string;
   submittedAt: Date;
 }
+
+export interface AgentService {
+  agentId: string;
+  serviceId: string;
+}
+
+export interface QAItem {
+  id: string;
+  serviceId: string;
+  question: string;
+  answer: string;
+  imageUrl?: string;
+  linkUrl?: string;
+  linkText?: string;
+}

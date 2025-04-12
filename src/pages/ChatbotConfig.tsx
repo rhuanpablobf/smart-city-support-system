@@ -1,18 +1,137 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Save, Plus, Trash2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import { DepartmentList } from '@/components/chatbot/DepartmentList';
+import { AgentServiceAssignment } from '@/components/chatbot/AgentServiceAssignment';
+import { Department } from '@/types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const ChatbotConfig = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [welcomeMessage, setWelcomeMessage] = useState(
+    "Olá! Bem-vindo ao atendimento da Prefeitura. Por favor, informe seu CPF para iniciarmos o atendimento."
+  );
+  const [timeoutMessage, setTimeoutMessage] = useState(
+    "Você está online? Estamos aguardando sua resposta."
+  );
+  const [secondTimeoutMessage, setSecondTimeoutMessage] = useState(
+    "Ainda está aí? Se não responder, o atendimento será encerrado em breve."
+  );
+  const [closingMessage, setClosingMessage] = useState(
+    "Atendimento encerrado por inatividade. Caso precise, inicie uma nova conversa."
+  );
+  const [maxInactivity, setMaxInactivity] = useState(3);
+  const [transferMessage, setTransferMessage] = useState(
+    "Transferindo para um atendente especializado. Por favor, aguarde um momento..."
+  );
+
+  // Fetch departments
+  const { data: departments = [], isLoading } = useQuery({
+    queryKey: ['departments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*');
+      
+      if (error) throw error;
+
+      return data.map(dept => ({
+        id: dept.id,
+        name: dept.name,
+        description: dept.description || '',
+      }));
+    }
+  });
+
+  // Add department mutation
+  const addDepartmentMutation = useMutation({
+    mutationFn: async (newDept: Partial<Department>) => {
+      const { data, error } = await supabase
+        .from('departments')
+        .insert({
+          name: newDept.name,
+          description: newDept.description || null
+        })
+        .select();
+
+      if (error) throw error;
+      return data[0];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      toast({
+        title: "Secretaria adicionada",
+        description: "A nova secretaria foi adicionada com sucesso."
+      });
+    },
+    onError: (error) => {
+      console.error("Error adding department:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar a secretaria. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Delete department mutation
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: async (deptId: string) => {
+      const { error } = await supabase
+        .from('departments')
+        .delete()
+        .eq('id', deptId);
+
+      if (error) throw error;
+      return deptId;
+    },
+    onSuccess: (deptId) => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      toast({
+        title: "Secretaria removida",
+        description: "A secretaria foi removida com sucesso."
+      });
+    },
+    onError: (error) => {
+      console.error("Error deleting department:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover a secretaria. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleAddDepartment = (department: Partial<Department>) => {
+    addDepartmentMutation.mutate(department);
+  };
+
+  const handleDeleteDepartment = (id: string) => {
+    deleteDepartmentMutation.mutate(id);
+  };
+
+  const handleSaveChanges = () => {
+    // Save all configuration values
+    // This would typically be an API call to save the configuration
+    toast({
+      title: "Configurações salvas",
+      description: "As alterações foram salvas com sucesso."
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Configuração do Chatbot</h2>
-        <Button>
+        <Button onClick={handleSaveChanges}>
           <Save className="mr-2 h-4 w-4" />
           Salvar Alterações
         </Button>
@@ -23,6 +142,7 @@ const ChatbotConfig = () => {
           <TabsTrigger value="flows">Fluxos de Conversação</TabsTrigger>
           <TabsTrigger value="responses">Respostas Automáticas</TabsTrigger>
           <TabsTrigger value="settings">Configurações Gerais</TabsTrigger>
+          <TabsTrigger value="agents">Atribuição de Serviços</TabsTrigger>
         </TabsList>
         
         <TabsContent value="flows" className="space-y-4 mt-4">
@@ -39,50 +159,16 @@ const ChatbotConfig = () => {
                 <Input
                   id="welcome-message"
                   placeholder="Olá! Bem-vindo ao atendimento automático da Prefeitura..."
-                  defaultValue="Olá! Bem-vindo ao atendimento da Prefeitura. Por favor, informe seu CPF para iniciarmos o atendimento."
+                  value={welcomeMessage}
+                  onChange={(e) => setWelcomeMessage(e.target.value)}
                 />
               </div>
               
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium mb-2">Etapas do Fluxo</h3>
-                
-                <div className="space-y-4">
-                  <div className="border rounded-lg p-3 bg-gray-50">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium">1. Solicitação de CPF</span>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4 text-gray-400" />
-                      </Button>
-                    </div>
-                    <p className="text-sm text-gray-600">Coleta o CPF do cidadão para registro do atendimento.</p>
-                  </div>
-                  
-                  <div className="border rounded-lg p-3 bg-gray-50">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium">2. Escolha da Secretaria</span>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4 text-gray-400" />
-                      </Button>
-                    </div>
-                    <p className="text-sm text-gray-600">Apresenta as secretarias disponíveis para o cidadão escolher.</p>
-                  </div>
-                  
-                  <div className="border rounded-lg p-3 bg-gray-50">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium">3. Escolha do Serviço</span>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4 text-gray-400" />
-                      </Button>
-                    </div>
-                    <p className="text-sm text-gray-600">Apresenta os serviços relacionados à secretaria escolhida.</p>
-                  </div>
-                  
-                  <Button variant="outline" className="w-full">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Nova Etapa
-                  </Button>
-                </div>
-              </div>
+              <DepartmentList 
+                departments={departments} 
+                onAddDepartment={handleAddDepartment}
+                onDeleteDepartment={handleDeleteDepartment}
+              />
             </CardContent>
           </Card>
           
@@ -115,7 +201,8 @@ const ChatbotConfig = () => {
                 <Input
                   id="timeout-message"
                   placeholder="Você está online?"
-                  defaultValue="Você está online? Estamos aguardando sua resposta."
+                  value={timeoutMessage}
+                  onChange={(e) => setTimeoutMessage(e.target.value)}
                 />
               </div>
               
@@ -124,7 +211,8 @@ const ChatbotConfig = () => {
                 <Input
                   id="second-timeout"
                   placeholder="Ainda está aí?"
-                  defaultValue="Ainda está aí? Se não responder, o atendimento será encerrado em breve."
+                  value={secondTimeoutMessage}
+                  onChange={(e) => setSecondTimeoutMessage(e.target.value)}
                 />
               </div>
               
@@ -133,7 +221,8 @@ const ChatbotConfig = () => {
                 <Input
                   id="closing-message"
                   placeholder="Atendimento encerrado"
-                  defaultValue="Atendimento encerrado por inatividade. Caso precise, inicie uma nova conversa."
+                  value={closingMessage}
+                  onChange={(e) => setClosingMessage(e.target.value)}
                 />
               </div>
             </CardContent>
@@ -154,7 +243,8 @@ const ChatbotConfig = () => {
                 <Input
                   id="max-inactivity"
                   type="number"
-                  defaultValue="3"
+                  value={maxInactivity}
+                  onChange={(e) => setMaxInactivity(parseInt(e.target.value, 10))}
                 />
               </div>
               
@@ -162,11 +252,16 @@ const ChatbotConfig = () => {
                 <Label htmlFor="transfer-message">Mensagem de Transferência para Atendente</Label>
                 <Input
                   id="transfer-message"
-                  defaultValue="Transferindo para um atendente especializado. Por favor, aguarde um momento..."
+                  value={transferMessage}
+                  onChange={(e) => setTransferMessage(e.target.value)}
                 />
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="agents" className="space-y-4 mt-4">
+          <AgentServiceAssignment />
         </TabsContent>
       </Tabs>
     </div>
