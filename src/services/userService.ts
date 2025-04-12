@@ -21,7 +21,7 @@ export const fetchUsers = async (): Promise<User[]> => {
     role: profile.role,
     department: profile.departments?.name || null,
     department_id: profile.department_id || null,
-    status: 'active', // Default status
+    status: profile.status || 'active', // Usar o valor do banco ou 'active' como fallback
     avatar: profile.avatar || undefined,
     maxSimultaneousChats: profile.max_simultaneous_chats || 5
   }));
@@ -65,7 +65,7 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
       role: userData.role,
       department_id: userData.department_id,
       max_simultaneous_chats: 5, // Default value
-      status: userData.status === 'active' ? 'active' : 'inactive'
+      status: userData.status || 'active' // Garantir que sempre temos um valor para status
     })
     .select()
     .single();
@@ -115,7 +115,7 @@ export const addUser = async (userData: UserFormValues): Promise<User> => {
     department: departmentName,
     department_id: userData.department_id,
     serviceIds: userData.serviceIds,
-    status: userData.status
+    status: userData.status || 'active' // Garantir que sempre temos um valor para status
   };
 };
 
@@ -131,7 +131,7 @@ export const updateUser = async (userId: string, userData: UserFormValues): Prom
       email: userData.email,
       role: userData.role,
       department_id: userData.department_id,
-      status: userData.status === 'active' ? 'active' : 'inactive'
+      status: userData.status || 'active' // Garantir que sempre temos um valor para status
     })
     .eq('id', userId);
 

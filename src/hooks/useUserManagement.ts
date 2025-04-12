@@ -86,7 +86,13 @@ export function useUserManagement() {
   // Add new user
   const addUser = async (userData: UserFormValues) => {
     try {
-      const newUser = await addUserService(userData);
+      // Ensure status is always defined
+      const userDataWithStatus = {
+        ...userData,
+        status: userData.status || 'active'
+      };
+      
+      const newUser = await addUserService(userDataWithStatus);
       
       // Update local state
       setUsers(prevUsers => [...prevUsers, newUser]);
@@ -110,7 +116,13 @@ export function useUserManagement() {
   // Edit existing user
   const updateUser = async (userId: string, userData: UserFormValues) => {
     try {
-      await updateUserService(userId, userData);
+      // Ensure status is always defined
+      const userDataWithStatus = {
+        ...userData,
+        status: userData.status || 'active'
+      };
+      
+      await updateUserService(userId, userDataWithStatus);
       
       // Fetch department name for display
       const departmentName = await getDepartmentName(userData.department_id || '');
@@ -127,7 +139,7 @@ export function useUserManagement() {
                 department: departmentName,
                 department_id: userData.department_id,
                 serviceIds: userData.serviceIds,
-                status: userData.status
+                status: userDataWithStatus.status
               } 
             : user
         )

@@ -289,6 +289,7 @@ export type Database = {
           max_simultaneous_chats: number | null
           name: string | null
           role: Database["public"]["Enums"]["user_role_enum"]
+          status: string | null
           updated_at: string
         }
         Insert: {
@@ -300,6 +301,7 @@ export type Database = {
           max_simultaneous_chats?: number | null
           name?: string | null
           role?: Database["public"]["Enums"]["user_role_enum"]
+          status?: string | null
           updated_at?: string
         }
         Update: {
@@ -311,6 +313,7 @@ export type Database = {
           max_simultaneous_chats?: number | null
           name?: string | null
           role?: Database["public"]["Enums"]["user_role_enum"]
+          status?: string | null
           updated_at?: string
         }
         Relationships: [
