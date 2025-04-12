@@ -1,9 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from "@/components/ui/use-toast";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,10 +12,39 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
-  const { isAuthenticated, loading, hasPermission } = useAuth();
+  const { isAuthenticated, loading, hasPermission, logout } = useAuth();
   const location = useLocation();
+  const { toast } = useToast();
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
   
-  if (loading) {
+  // Add safety timeout to prevent infinite loading
+  useEffect(() => {
+    // Set a timeout to prevent being stuck in the loading state
+    let timeoutId: NodeJS.Timeout;
+    
+    if (loading) {
+      timeoutId = setTimeout(() => {
+        console.log("Loading timeout reached, forcing navigation to login");
+        setLoadingTimeout(true);
+        // Show error message to the user
+        toast({
+          title: "Erro de autenticação",
+          description: "O processo de verificação de permissões demorou muito tempo. Por favor, faça login novamente.",
+          variant: "destructive",
+        });
+        // Force logout to reset the authentication state
+        logout().catch(console.error);
+      }, 10000); // 10 seconds timeout
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [loading, toast, logout]);
+
+  console.log("ProtectedRoute - loading:", loading, "isAuthenticated:", isAuthenticated);
+  
+  if (loading && !loadingTimeout) {
     // Mostrar um spinner de carregamento enquanto verifica a autenticação
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
@@ -27,9 +57,9 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     );
   }
 
-  if (!isAuthenticated) {
-    // Redirecionar para login se o usuário não estiver autenticado
-    console.log("User not authenticated, redirecting to login");
+  if (loadingTimeout || !isAuthenticated) {
+    // Redirecionar para login se o usuário não estiver autenticado ou timeout ocorrer
+    console.log("User not authenticated or timeout occurred, redirecting to login");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { User, UserRole } from '@/types';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from '@/integrations/supabase/client';
@@ -71,11 +71,19 @@ export function useAuthService() {
     }
   };
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
+      console.log("Logging out...");
       setLoading(true);
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Logout error:", error);
+        throw error;
+      }
+      
       setCurrentUser(null);
+      
       toast({
         title: "Logout realizado",
         description: "Você foi desconectado com sucesso.",
@@ -90,12 +98,17 @@ export function useAuthService() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const hasPermission = (requiredRole: UserRole): boolean => {
-    if (!currentUser) return false;
-    return ROLE_HIERARCHY[currentUser.role] >= ROLE_HIERARCHY[requiredRole];
-  };
+  const hasPermission = useCallback((requiredRole: UserRole): boolean => {
+    if (!currentUser) {
+      console.log("hasPermission: No current user");
+      return false;
+    }
+    const hasRole = ROLE_HIERARCHY[currentUser.role] >= ROLE_HIERARCHY[requiredRole];
+    console.log(`hasPermission: User role ${currentUser.role}, required role ${requiredRole}, result: ${hasRole}`);
+    return hasRole;
+  }, [currentUser]);
 
   return {
     currentUser,
