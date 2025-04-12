@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { DepartmentList } from '@/components/chatbot/DepartmentList';
 import { AgentServiceAssignment } from '@/components/chatbot/AgentServiceAssignment';
@@ -16,22 +16,24 @@ import { supabase } from '@/integrations/supabase/client';
 const ChatbotConfig = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Estados para configurações de mensagens do bot
   const [welcomeMessage, setWelcomeMessage] = useState(
     "Olá! Bem-vindo ao atendimento da Prefeitura. Por favor, informe seu CPF para iniciarmos o atendimento."
   );
-  const [timeoutMessage, setTimeoutMessage] = useState(
-    "Você está online? Estamos aguardando sua resposta."
-  );
-  const [secondTimeoutMessage, setSecondTimeoutMessage] = useState(
-    "Ainda está aí? Se não responder, o atendimento será encerrado em breve."
-  );
-  const [closingMessage, setClosingMessage] = useState(
-    "Atendimento encerrado por inatividade. Caso precise, inicie uma nova conversa."
-  );
-  const [maxInactivity, setMaxInactivity] = useState(3);
   const [transferMessage, setTransferMessage] = useState(
     "Transferindo para um atendente especializado. Por favor, aguarde um momento..."
   );
+  
+  // Estados para configurações de inatividade
+  const [inactivityConfig, setInactivityConfig] = useState({
+    firstWarningTime: 1, // minutos até primeiro aviso
+    secondWarningTime: 2, // minutos até segundo aviso
+    closeTime: 3, // minutos até encerramento
+    firstWarningMessage: "Você está online? Estamos aguardando sua resposta.",
+    secondWarningMessage: "Ainda está aí? Se não responder, o atendimento será encerrado em breve.",
+    closingMessage: "Atendimento encerrado por inatividade. Caso precise, inicie uma nova conversa."
+  });
 
   // Fetch departments
   const { data: departments = [], isLoading } = useQuery({
@@ -93,7 +95,7 @@ const ChatbotConfig = () => {
       if (error) throw error;
       return deptId;
     },
-    onSuccess: (deptId) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
       toast({
         title: "Secretaria removida",
@@ -118,31 +120,61 @@ const ChatbotConfig = () => {
     deleteDepartmentMutation.mutate(id);
   };
 
+  // Salvar configurações do bot
+  const saveBotConfigMutation = useMutation({
+    mutationFn: async (config: any) => {
+      // Aqui seria a chamada para salvar as configurações no banco de dados
+      // Por enquanto, apenas simulando com um delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return config;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Configurações salvas",
+        description: "As configurações do bot foram atualizadas com sucesso."
+      });
+    },
+    onError: (error) => {
+      console.error("Error saving bot config:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar as configurações. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleSaveChanges = () => {
-    // Save all configuration values
-    // This would typically be an API call to save the configuration
-    toast({
-      title: "Configurações salvas",
-      description: "As alterações foram salvas com sucesso."
+    saveBotConfigMutation.mutate({
+      welcomeMessage,
+      transferMessage,
+      inactivityConfig
     });
+  };
+
+  const handleInactivityChange = (field: string, value: any) => {
+    setInactivityConfig(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Configuração do Chatbot</h2>
-        <Button onClick={handleSaveChanges}>
+        <Button onClick={handleSaveChanges} disabled={saveBotConfigMutation.isPending}>
           <Save className="mr-2 h-4 w-4" />
-          Salvar Alterações
+          {saveBotConfigMutation.isPending ? "Salvando..." : "Salvar Alterações"}
         </Button>
       </div>
 
       <Tabs defaultValue="flows">
         <TabsList>
-          <TabsTrigger value="flows">Fluxos de Conversação</TabsTrigger>
-          <TabsTrigger value="responses">Respostas Automáticas</TabsTrigger>
-          <TabsTrigger value="settings">Configurações Gerais</TabsTrigger>
-          <TabsTrigger value="agents">Atribuição de Serviços</TabsTrigger>
+          <TabsTrigger value="flows">Fluxo de Conversação</TabsTrigger>
+          <TabsTrigger value="departments">Departamentos</TabsTrigger>
+          <TabsTrigger value="inactivity">Configuração de Inatividade</TabsTrigger>
+          <TabsTrigger value="agents">Serviços dos Atendentes</TabsTrigger>
         </TabsList>
         
         <TabsContent value="flows" className="space-y-4 mt-4">
@@ -150,7 +182,7 @@ const ChatbotConfig = () => {
             <CardHeader>
               <CardTitle>Fluxo de Autoatendimento</CardTitle>
               <CardDescription>
-                Configure o fluxo de mensagens e opções para o atendimento automatizado
+                Configure o fluxo de mensagens para o atendimento automatizado
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -164,11 +196,17 @@ const ChatbotConfig = () => {
                 />
               </div>
               
-              <DepartmentList 
-                departments={departments} 
-                onAddDepartment={handleAddDepartment}
-                onDeleteDepartment={handleDeleteDepartment}
-              />
+              <div className="flex flex-col space-y-1.5">
+                <Label htmlFor="transfer-message">Mensagem de Transferência para Atendente</Label>
+                <Input
+                  id="transfer-message"
+                  value={transferMessage}
+                  onChange={(e) => setTransferMessage(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Esta mensagem é exibida quando o bot transfere a conversa para um atendente humano.
+                </p>
+              </div>
             </CardContent>
           </Card>
           
@@ -186,81 +224,98 @@ const ChatbotConfig = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="responses" className="space-y-4 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Respostas Padrão</CardTitle>
-              <CardDescription>
-                Configure mensagens automáticas para situações específicas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="timeout-message">Mensagem de Inatividade (1 min)</Label>
-                <Input
-                  id="timeout-message"
-                  placeholder="Você está online?"
-                  value={timeoutMessage}
-                  onChange={(e) => setTimeoutMessage(e.target.value)}
-                />
-              </div>
-              
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="second-timeout">Segunda Mensagem de Inatividade (2 min)</Label>
-                <Input
-                  id="second-timeout"
-                  placeholder="Ainda está aí?"
-                  value={secondTimeoutMessage}
-                  onChange={(e) => setSecondTimeoutMessage(e.target.value)}
-                />
-              </div>
-              
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="closing-message">Mensagem de Encerramento</Label>
-                <Input
-                  id="closing-message"
-                  placeholder="Atendimento encerrado"
-                  value={closingMessage}
-                  onChange={(e) => setClosingMessage(e.target.value)}
-                />
-              </div>
-            </CardContent>
-          </Card>
+
+        <TabsContent value="departments" className="mt-4">
+          <DepartmentList 
+            departments={departments} 
+            onAddDepartment={handleAddDepartment}
+            onDeleteDepartment={handleDeleteDepartment}
+          />
         </TabsContent>
         
-        <TabsContent value="settings" className="space-y-4 mt-4">
+        <TabsContent value="inactivity" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Configurações Gerais</CardTitle>
+              <CardTitle>Tempo de Inatividade e Respostas Automáticas</CardTitle>
               <CardDescription>
-                Ajuste parâmetros do comportamento do bot
+                Configure os intervalos e mensagens para usuários inativos
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="max-inactivity">Tempo máximo de inatividade (minutos)</Label>
-                <Input
-                  id="max-inactivity"
-                  type="number"
-                  value={maxInactivity}
-                  onChange={(e) => setMaxInactivity(parseInt(e.target.value, 10))}
-                />
-              </div>
-              
-              <div className="flex flex-col space-y-1.5">
-                <Label htmlFor="transfer-message">Mensagem de Transferência para Atendente</Label>
-                <Input
-                  id="transfer-message"
-                  value={transferMessage}
-                  onChange={(e) => setTransferMessage(e.target.value)}
-                />
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="font-medium text-lg">Intervalos de Tempo</h3>
+                  
+                  <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="first-warning-time">Primeiro Aviso (minutos)</Label>
+                    <Input
+                      id="first-warning-time"
+                      type="number"
+                      value={inactivityConfig.firstWarningTime}
+                      onChange={(e) => handleInactivityChange('firstWarningTime', parseInt(e.target.value, 10))}
+                      min={1}
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="second-warning-time">Segundo Aviso (minutos)</Label>
+                    <Input
+                      id="second-warning-time"
+                      type="number"
+                      value={inactivityConfig.secondWarningTime}
+                      onChange={(e) => handleInactivityChange('secondWarningTime', parseInt(e.target.value, 10))}
+                      min={inactivityConfig.firstWarningTime + 1}
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="close-time">Encerrar Conversa (minutos)</Label>
+                    <Input
+                      id="close-time"
+                      type="number"
+                      value={inactivityConfig.closeTime}
+                      onChange={(e) => handleInactivityChange('closeTime', parseInt(e.target.value, 10))}
+                      min={inactivityConfig.secondWarningTime + 1}
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <h3 className="font-medium text-lg">Mensagens</h3>
+                  
+                  <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="first-warning-message">Primeiro Aviso</Label>
+                    <Input
+                      id="first-warning-message"
+                      value={inactivityConfig.firstWarningMessage}
+                      onChange={(e) => handleInactivityChange('firstWarningMessage', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="second-warning-message">Segundo Aviso</Label>
+                    <Input
+                      id="second-warning-message"
+                      value={inactivityConfig.secondWarningMessage}
+                      onChange={(e) => handleInactivityChange('secondWarningMessage', e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col space-y-1.5">
+                    <Label htmlFor="closing-message">Mensagem de Encerramento</Label>
+                    <Input
+                      id="closing-message"
+                      value={inactivityConfig.closingMessage}
+                      onChange={(e) => handleInactivityChange('closingMessage', e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="agents" className="space-y-4 mt-4">
+        <TabsContent value="agents" className="mt-4">
           <AgentServiceAssignment />
         </TabsContent>
       </Tabs>

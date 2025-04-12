@@ -1,17 +1,21 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2 } from 'lucide-react';
+import { Check, Loader2, HelpCircle } from 'lucide-react';
 import { User } from '@/types';
-import { LoadingState } from './LoadingState';
 import { AgentCard } from './AgentCard';
+import { LoadingState } from './LoadingState';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useToast } from '@/components/ui/use-toast';
 
 export const AgentServiceAssignment = () => {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+  const [selectedAssignments, setSelectedAssignments] = useState<Record<string, string[]>>({});
 
   // Fetch all agents
   const { data: agents = [], isLoading: loadingAgents } = useQuery({
@@ -55,16 +59,38 @@ export const AgentServiceAssignment = () => {
   });
 
   // Fetch agent-service assignments
-  const { data: assignments = {}, isLoading: loadingAssignments } = useQuery({
+  const { data: assignments = [], isLoading: loadingAssignments } = useQuery({
     queryKey: ['agent-service-assignments'],
     queryFn: async () => {
-      // In a real implementation, you would fetch the assignments from the database
-      // This is just a placeholder
-      return {};
+      const { data, error } = await supabase
+        .from('agent_services')
+        .select('agent_id, service_id');
+      
+      if (error) throw error;
+      
+      // Convert to Record<string, string[]> format
+      const assignmentMap: Record<string, string[]> = {};
+      data.forEach((assignment: any) => {
+        const agentId = assignment.agent_id;
+        const serviceId = assignment.service_id;
+        
+        if (!assignmentMap[agentId]) {
+          assignmentMap[agentId] = [];
+        }
+        
+        assignmentMap[agentId].push(serviceId);
+      });
+      
+      return assignmentMap;
     },
   });
 
-  const [selectedAssignments, setSelectedAssignments] = useState<Record<string, string[]>>(assignments);
+  // Set initial selections when assignments load
+  useEffect(() => {
+    if (assignments && Object.keys(assignments).length > 0) {
+      setSelectedAssignments(assignments);
+    }
+  }, [assignments]);
 
   const toggleServiceForAgent = (agentId: string, serviceId: string) => {
     setSelectedAssignments((prev) => {
@@ -84,17 +110,59 @@ export const AgentServiceAssignment = () => {
     });
   };
 
+  // Save agent-service assignments mutation
+  const saveAssignmentsMutation = useMutation({
+    mutationFn: async (assignments: Record<string, string[]>) => {
+      // Step 1: Delete all existing agent_services for these agents
+      const agentIds = Object.keys(assignments);
+      
+      for (const agentId of agentIds) {
+        await supabase.rpc('delete_agent_services', { agent_id_param: agentId });
+      }
+      
+      // Step 2: Insert new agent_services assignments
+      const newAssignments: { agent_id: string; service_id: string; }[] = [];
+      
+      for (const [agentId, serviceIds] of Object.entries(assignments)) {
+        for (const serviceId of serviceIds) {
+          newAssignments.push({
+            agent_id: agentId,
+            service_id: serviceId
+          });
+        }
+      }
+      
+      if (newAssignments.length > 0) {
+        const { error } = await supabase.rpc('insert_agent_services', { 
+          services: newAssignments 
+        });
+        
+        if (error) throw error;
+      }
+      
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['agent-service-assignments'] });
+      toast({
+        title: "Atribuições salvas",
+        description: "As atribuições de serviços foram atualizadas com sucesso."
+      });
+    },
+    onError: (error) => {
+      console.error('Error saving assignments:', error);
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível salvar as atribuições. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleSaveAssignments = async () => {
     setSaving(true);
-    
     try {
-      // In a real implementation, you would save these assignments to the database
-      console.log('Saving service assignments:', selectedAssignments);
-      
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['agent-service-assignments'] });
-    } catch (error) {
-      console.error('Error saving assignments:', error);
+      await saveAssignmentsMutation.mutateAsync(selectedAssignments);
     } finally {
       setSaving(false);
     }
@@ -113,6 +181,15 @@ export const AgentServiceAssignment = () => {
         </p>
       </CardHeader>
       <CardContent>
+        <Alert className="mb-6">
+          <HelpCircle className="h-4 w-4" />
+          <AlertTitle>Informação</AlertTitle>
+          <AlertDescription>
+            Esta tela permite a modificação em lote das atribuições de serviços.
+            Você também pode configurar serviços individuais ao criar ou editar um atendente.
+          </AlertDescription>
+        </Alert>
+
         <div className="space-y-6">
           {agents.length === 0 ? (
             <div className="text-center py-4 text-muted-foreground">

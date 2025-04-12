@@ -17,6 +17,7 @@ interface ConversationListProps {
   onAcceptWaiting?: (id: string) => void;
   showAcceptButton?: boolean;
   isLoading?: boolean;
+  emptyMessage?: string;
 }
 
 const ConversationList = ({ 
@@ -25,7 +26,8 @@ const ConversationList = ({
   onSelectConversation,
   onAcceptWaiting,
   showAcceptButton,
-  isLoading = false
+  isLoading = false,
+  emptyMessage = "Nenhuma conversa disponível"
 }: ConversationListProps) => {
   if (isLoading) {
     return (
@@ -49,78 +51,80 @@ const ConversationList = ({
   if (conversations.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
-        Nenhuma conversa disponível
+        {emptyMessage}
       </div>
     );
   }
-  
+
   return (
     <div className="divide-y">
-      {conversations.map((conversation) => (
-        <div
-          key={conversation.id}
-          className={cn(
-            "p-3 hover:bg-gray-50 cursor-pointer",
-            currentConversation?.id === conversation.id ? "bg-gray-100" : ""
-          )}
-        >
-          <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10 flex-shrink-0">
-              <AvatarFallback className={cn(
-                conversation.status === 'bot' ? "bg-purple-100 text-purple-800" : 
-                conversation.status === 'waiting' ? "bg-yellow-100 text-yellow-800" :
-                "bg-blue-100 text-blue-800"
-              )}>
-                {conversation.status === 'bot' ? <Bot className="h-5 w-5" /> : <User className="h-5 w-5" />}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 min-w-0" onClick={() => onSelectConversation(conversation.id)}>
-              <div className="flex items-center justify-between">
-                <p className="font-medium truncate">
-                  {`CPF: ${conversation.userCpf}`}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {formatDistanceToNow(new Date(conversation.lastMessageAt), {
-                    addSuffix: true,
-                    locale: ptBR
-                  })}
-                </p>
+      {conversations.map((conversation) => {
+        const isActive = currentConversation?.id === conversation.id;
+        const timeAgo = formatDistanceToNow(new Date(conversation.lastMessageAt), { 
+          addSuffix: true,
+          locale: ptBR
+        });
+        
+        return (
+          <div 
+            key={conversation.id}
+            className={cn(
+              "p-3 hover:bg-gray-50 cursor-pointer",
+              isActive && "bg-blue-50 hover:bg-blue-50"
+            )}
+            onClick={() => onSelectConversation(conversation.id)}
+          >
+            <div className="flex items-start">
+              <Avatar className="h-10 w-10 mr-3">
+                <AvatarFallback className={cn(
+                  "bg-gray-200 text-gray-700",
+                  conversation.status === 'bot' && "bg-purple-100 text-purple-700"
+                )}>
+                  {conversation.status === 'bot' ? <Bot size={16} /> : <User size={16} />}
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="font-medium truncate">
+                    {conversation.userCpf}
+                  </p>
+                  <span className="text-xs text-gray-500 whitespace-nowrap ml-2">
+                    {timeAgo}
+                  </span>
+                </div>
+                
+                <div className="flex items-center">
+                  {conversation.departmentName && (
+                    <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-700 mr-1">
+                      {conversation.departmentName}
+                    </span>
+                  )}
+                  
+                  {conversation.serviceName && (
+                    <span className="text-xs truncate text-gray-500">
+                      {conversation.serviceName}
+                    </span>
+                  )}
+                </div>
               </div>
               
-              <div className="flex justify-between items-center">
-                <p className="truncate text-sm text-gray-500">
-                  {conversation.departmentName || 'Departamento não definido'}
-                  {conversation.serviceName ? ` - ${conversation.serviceName}` : ''}
-                </p>
-                
-                {conversation.status === 'waiting' && showAcceptButton && onAcceptWaiting ? (
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    className="text-xs h-7 bg-green-100 text-green-800 border-green-200 hover:bg-green-200 hover:text-green-900"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onAcceptWaiting(conversation.id);
-                    }}
-                  >
-                    Aceitar
-                  </Button>
-                ) : (
-                  <Badge variant="outline" className={cn(
-                    conversation.status === 'waiting' ? "bg-yellow-100 text-yellow-800 border-yellow-200" :
-                    conversation.status === 'active' ? "bg-green-100 text-green-800 border-green-200" :
-                    "bg-purple-100 text-purple-800 border-purple-200"
-                  )}>
-                    {conversation.status === 'waiting' ? 'Aguardando' : 
-                     conversation.status === 'active' ? 'Em atendimento' : 'Bot'}
-                  </Badge>
-                )}
-              </div>
+              {showAcceptButton && conversation.status === 'waiting' && onAcceptWaiting && (
+                <Button
+                  size="sm"
+                  className="ml-2 h-8"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAcceptWaiting(conversation.id);
+                  }}
+                >
+                  Aceitar
+                </Button>
+              )}
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

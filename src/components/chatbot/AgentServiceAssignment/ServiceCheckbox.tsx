@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { HelpCircle } from 'lucide-react';
 
 interface ServiceCheckboxProps {
   agentId: string;
@@ -37,6 +39,14 @@ export const ServiceCheckbox: React.FC<ServiceCheckboxProps> = ({
           {service.departmentName}
         </span>
       </label>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <HelpCircle className="h-4 w-4 text-muted-foreground shrink-0 cursor-help" />
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs max-w-xs">Os serviços atribuídos aqui determinam quais tipos de atendimento cada agente pode receber</p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 };
