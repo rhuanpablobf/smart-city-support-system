@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
-import { User, Department, Service } from '@/types';
+import { User } from '@/types';
 import { useUserManagement, UserFormValues } from '@/hooks/useUserManagement';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { DeleteUserDialog } from '@/components/users/DeleteUserDialog';
@@ -11,87 +11,18 @@ import { UserTableHeader } from '@/components/users/UserTableHeader';
 import { UserTable } from '@/components/users/UserTable';
 import { useAuth } from '@/contexts/auth';
 
-// Mock user data with correct typing for User interface
-const mockUsers: User[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-    department: 'TI',
-    departmentId: '1',
-    status: 'active'
-  },
-  {
-    id: '2',
-    name: 'Manager User',
-    email: 'manager@example.com',
-    role: 'manager',
-    department: 'Saúde',
-    departmentId: '2',
-    serviceIds: ['1', '2'],
-    status: 'active'
-  },
-  {
-    id: '3',
-    name: 'Agent User',
-    email: 'agent@example.com',
-    role: 'agent',
-    department: 'Educação',
-    departmentId: '3',
-    serviceIds: ['3'],
-    status: 'active'
-  },
-  {
-    id: '4',
-    name: 'Carlos Santos',
-    email: 'carlos@example.com',
-    role: 'agent',
-    department: 'Saúde',
-    departmentId: '2',
-    serviceIds: ['1'],
-    status: 'active'
-  },
-  {
-    id: '5',
-    name: 'Mariana Silva',
-    email: 'mariana@example.com',
-    role: 'manager',
-    department: 'Finanças',
-    departmentId: '4',
-    serviceIds: ['4', '5'],
-    status: 'inactive'
-  }
-];
-
-// Mock departments data
-const mockDepartments: Department[] = [
-  { id: '1', name: 'Tecnologia da Informação', description: 'Departamento de TI' },
-  { id: '2', name: 'Secretaria de Saúde', description: 'Cuidados com saúde pública' },
-  { id: '3', name: 'Secretaria de Educação', description: 'Ensino público' },
-  { id: '4', name: 'Secretaria de Finanças', description: 'Finanças públicas' },
-  { id: '5', name: 'Secretaria de Obras', description: 'Infraestrutura e obras públicas' }
-];
-
-// Mock services data
-const mockServices: Service[] = [
-  { id: '1', departmentId: '2', name: 'Agendamento de Consultas', description: 'Agendamento de consultas médicas' },
-  { id: '2', departmentId: '2', name: 'Vacinação', description: 'Serviços de vacinação' },
-  { id: '3', departmentId: '3', name: 'Matrícula Escolar', description: 'Matrícula em escolas públicas' },
-  { id: '4', departmentId: '4', name: 'Pagamento de Tributos', description: 'Pagamento de impostos municipais' },
-  { id: '5', departmentId: '4', name: 'Emissão de Notas Fiscais', description: 'Emissão de notas fiscais' },
-  { id: '6', departmentId: '5', name: 'Solicitação de Reparos', description: 'Solicitação de reparos em vias públicas' }
-];
-
 const UsersManagement = () => {
   const {
     filteredUsers,
+    departments,
+    services,
     searchTerm,
     setSearchTerm,
     addUser,
     updateUser,
-    deleteUser
-  } = useUserManagement(mockUsers);
+    deleteUser,
+    loading
+  } = useUserManagement();
   
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -152,11 +83,19 @@ const UsersManagement = () => {
             onAddUser={handleOpenAddUser}
           />
           
-          <UserTable 
-            users={filteredUsers}
-            onEditUser={handleEditUser}
-            onDeleteUser={handleOpenDeleteDialog}
-          />
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-pulse text-center">
+                <p className="text-muted-foreground">Carregando usuários...</p>
+              </div>
+            </div>
+          ) : (
+            <UserTable 
+              users={filteredUsers}
+              onEditUser={handleEditUser}
+              onDeleteUser={handleOpenDeleteDialog}
+            />
+          )}
         </CardContent>
       </Card>
       
@@ -166,8 +105,8 @@ const UsersManagement = () => {
         onOpenChange={setIsUserFormOpen}
         user={selectedUser}
         onSave={handleSaveUser}
-        departments={mockDepartments}
-        services={mockServices}
+        departments={departments}
+        services={services}
         currentUserRole={currentUser?.role}
       />
       

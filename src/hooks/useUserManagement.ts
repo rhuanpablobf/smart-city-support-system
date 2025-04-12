@@ -1,8 +1,9 @@
 
-import { useState } from 'react';
-import { User, UserRole } from '@/types';
+import { useState, useEffect } from 'react';
+import { User, UserRole, Department, Service } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '@/integrations/supabase/client';
 
 // Tipo para os valores do formulário de usuário
 export interface UserFormValues {
@@ -14,10 +15,109 @@ export interface UserFormValues {
   status: 'active' | 'inactive';
 }
 
-export function useUserManagement(initialUsers: User[]) {
-  const [users, setUsers] = useState<User[]>(initialUsers);
+export function useUserManagement() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  // Buscar usuários do Supabase
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*, departments:department_id(id, name, description)');
+
+      if (error) throw error;
+
+      // Mapear para o formato User
+      const formattedUsers: User[] = profiles.map((profile) => ({
+        id: profile.id,
+        name: profile.name || '',
+        email: profile.email || '',
+        role: profile.role as UserRole,
+        department: profile.departments?.name || null,
+        departmentId: profile.department_id || null,
+        status: 'active', // Default status, poderia ser armazenado no Supabase também
+        avatar: profile.avatar || undefined,
+        maxSimultaneousChats: profile.max_simultaneous_chats || 5
+      }));
+
+      setUsers(formattedUsers);
+
+      // Buscar serviços associados a cada agente/gerente
+      for (const user of formattedUsers) {
+        if (user.role === 'agent' || user.role === 'manager') {
+          const { data: agentServices } = await supabase
+            .from('agent_services')
+            .select('service_id')
+            .eq('agent_id', user.id);
+          
+          if (agentServices && agentServices.length > 0) {
+            user.serviceIds = agentServices.map(as => as.service_id);
+          }
+        }
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar usuários",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Buscar departamentos do Supabase
+  const fetchDepartments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('departments')
+        .select('*');
+
+      if (error) throw error;
+      
+      setDepartments(data);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar departamentos",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Buscar serviços do Supabase
+  const fetchServices = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('services')
+        .select('*');
+
+      if (error) throw error;
+      
+      setServices(data);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar serviços",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Efeito para buscar dados do Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      await Promise.all([fetchUsers(), fetchDepartments(), fetchServices()]);
+    };
+    
+    fetchData();
+  }, []);
 
   // Filtrar usuários com base no termo de pesquisa
   const filteredUsers = users.filter(user => 
@@ -27,60 +127,205 @@ export function useUserManagement(initialUsers: User[]) {
   );
 
   // Adicionar novo usuário
-  const addUser = (userData: UserFormValues) => {
-    const newUser: User = {
-      id: uuidv4(),
-      name: userData.name,
-      email: userData.email,
-      role: userData.role,
-      departmentId: userData.departmentId,
-      serviceIds: userData.serviceIds,
-      status: userData.status
-    };
-    
-    setUsers(prevUsers => [...prevUsers, newUser]);
-    
-    toast({
-      title: "Usuário adicionado",
-      description: "O novo usuário foi adicionado com sucesso.",
-    });
-    
-    return newUser;
+  const addUser = async (userData: UserFormValues) => {
+    try {
+      // Criar novo usuário no Supabase Auth (simulado - em produção usaria Supabase Auth)
+      // Nota: Em produção, isso seria feito através de uma função de borda ou backend
+      const uuid = uuidv4();
+      
+      // Inserir perfil na tabela profiles
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          id: uuid,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          department_id: userData.departmentId,
+          max_simultaneous_chats: 5, // Valor padrão
+          status: userData.status === 'active' ? 'active' : 'inactive'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Se for gerente ou atendente e tiver serviços selecionados, inserir na tabela agent_services
+      if ((userData.role === 'agent' || userData.role === 'manager') && 
+          userData.serviceIds && 
+          userData.serviceIds.length > 0) {
+        
+        const agentServices = userData.serviceIds.map(serviceId => ({
+          agent_id: uuid,
+          service_id: serviceId
+        }));
+        
+        const { error: servicesError } = await supabase
+          .from('agent_services')
+          .insert(agentServices);
+          
+        if (servicesError) throw servicesError;
+      }
+      
+      // Buscar nome do departamento para exibição
+      let departmentName = null;
+      if (userData.departmentId) {
+        const { data: deptData } = await supabase
+          .from('departments')
+          .select('name')
+          .eq('id', userData.departmentId)
+          .single();
+          
+        if (deptData) departmentName = deptData.name;
+      }
+
+      const newUser: User = {
+        id: uuid,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        department: departmentName,
+        departmentId: userData.departmentId,
+        serviceIds: userData.serviceIds,
+        status: userData.status
+      };
+      
+      // Atualizar estado local
+      setUsers(prevUsers => [...prevUsers, newUser]);
+      
+      toast({
+        title: "Usuário adicionado",
+        description: "O novo usuário foi adicionado com sucesso.",
+      });
+      
+      return newUser;
+    } catch (error: any) {
+      toast({
+        title: "Erro ao adicionar usuário",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
   };
 
   // Editar usuário existente
-  const updateUser = (userId: string, userData: UserFormValues) => {
-    setUsers(prevUsers => 
-      prevUsers.map(user => 
-        user.id === userId 
-          ? { ...user, ...userData } 
-          : user
-      )
-    );
-    
-    toast({
-      title: "Usuário atualizado",
-      description: "O usuário foi atualizado com sucesso.",
-    });
+  const updateUser = async (userId: string, userData: UserFormValues) => {
+    try {
+      // Atualizar perfil na tabela profiles
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          department_id: userData.departmentId,
+          status: userData.status === 'active' ? 'active' : 'inactive'
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      // Atualizar serviços do usuário (excluir existentes e inserir novos)
+      if (userData.role === 'agent' || userData.role === 'manager') {
+        // Remover associações existentes
+        const { error: deleteError } = await supabase
+          .from('agent_services')
+          .delete()
+          .eq('agent_id', userId);
+          
+        if (deleteError) throw deleteError;
+        
+        // Adicionar novas associações de serviços
+        if (userData.serviceIds && userData.serviceIds.length > 0) {
+          const agentServices = userData.serviceIds.map(serviceId => ({
+            agent_id: userId,
+            service_id: serviceId
+          }));
+          
+          const { error: insertError } = await supabase
+            .from('agent_services')
+            .insert(agentServices);
+            
+          if (insertError) throw insertError;
+        }
+      }
+
+      // Buscar nome do departamento para exibição
+      let departmentName = null;
+      if (userData.departmentId) {
+        const { data: deptData } = await supabase
+          .from('departments')
+          .select('name')
+          .eq('id', userData.departmentId)
+          .single();
+          
+        if (deptData) departmentName = deptData.name;
+      }
+      
+      // Atualizar estado local
+      setUsers(prevUsers => 
+        prevUsers.map(user => 
+          user.id === userId 
+            ? { 
+                ...user, 
+                ...userData,
+                department: departmentName
+              } 
+            : user
+        )
+      );
+      
+      toast({
+        title: "Usuário atualizado",
+        description: "O usuário foi atualizado com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar usuário",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   // Excluir usuário
-  const deleteUser = (userId: string) => {
-    setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
-    
-    toast({
-      title: "Usuário removido",
-      description: "O usuário foi removido com sucesso.",
-    });
+  const deleteUser = async (userId: string) => {
+    try {
+      // Em produção, isso seria feito através de uma função de borda ou backend
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+      
+      // Atualizar estado local
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+      
+      toast({
+        title: "Usuário removido",
+        description: "O usuário foi removido com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao remover usuário",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return {
     users,
+    departments,
+    services,
     filteredUsers,
     searchTerm,
     setSearchTerm,
     addUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    loading
   };
 }
