@@ -18,6 +18,12 @@ const Unauthorized = () => {
     });
   }, [isAuthenticated, userRole, currentUser]);
   
+  const handleGoHome = () => {
+    // Navegar diretamente para a página de login em vez da página inicial
+    // para evitar loops de redirecionamento
+    navigate('/login');
+  };
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow text-center">
@@ -40,10 +46,10 @@ const Unauthorized = () => {
         
         <div className="space-y-3">
           <Button
-            onClick={() => navigate('/')}
+            onClick={handleGoHome}
             className="w-full bg-chatbot-primary hover:bg-chatbot-dark"
           >
-            Voltar para a página inicial
+            Voltar para a página de login
           </Button>
           
           {userRole === 'admin' && (

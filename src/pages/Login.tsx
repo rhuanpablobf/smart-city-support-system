@@ -28,7 +28,9 @@ const Login = () => {
       // Redirecionar baseado no papel do usuário
       let redirectPath = '/';
       
-      if (userRole === 'admin' || userRole === 'manager') {
+      if (userRole === 'admin') {
+        redirectPath = '/users';
+      } else if (userRole === 'manager') {
         redirectPath = '/dashboard';
       } else if (userRole === 'agent') {
         redirectPath = '/agent';

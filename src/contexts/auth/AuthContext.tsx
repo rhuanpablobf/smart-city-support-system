@@ -81,7 +81,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.log("Papel obtido do perfil:", userRole);
           } else {
             // Alternativa baseada no email (fallback)
-            userRole = determineUserRole(userData.email);
+            if (userData.email) {
+              if (userData.email.includes('admin')) userRole = 'admin';
+              else if (userData.email.includes('manager')) userRole = 'manager';
+              else if (userData.email.includes('agent')) userRole = 'agent';
+            }
             console.log("Papel determinado pelo email:", userRole);
           }
           
@@ -138,17 +142,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [setCurrentUser, setLoading]);
   
-  // Função auxiliar para determinar o papel do usuário a partir do email
-  const determineUserRole = (email: string | undefined): UserRole => {
-    if (!email) return 'user';
-    
-    if (email.includes('admin')) return 'admin';
-    if (email.includes('manager')) return 'manager';
-    if (email.includes('agent')) return 'agent';
-    
-    return 'user';
-  };
-
   const value = {
     currentUser,
     loading,
