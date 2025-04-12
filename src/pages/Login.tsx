@@ -6,38 +6,56 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, userRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   
   const from = location.state?.from?.pathname || '/';
 
   // Effect to handle redirection when already authenticated
   useEffect(() => {
-    console.log("Login check - isAuthenticated:", isAuthenticated);
-    if (isAuthenticated) {
-      console.log("User is authenticated, navigating to:", from);
-      navigate(from, { replace: true });
+    console.log("Login page - isAuthenticated check:", isAuthenticated, "userRole:", userRole);
+    
+    if (isAuthenticated && userRole) {
+      console.log("User is authenticated, navigating to:", userRole === 'agent' ? '/agent' : '/dashboard');
+      // Redirecionar baseado no papel do usuário
+      if (userRole === 'admin' || userRole === 'manager') {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/agent', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, navigate, userRole]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Campos obrigatórios",
+        description: "Email e senha são necessários para login.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      console.log("Attempting to login with:", email);
+      console.log("Iniciando processo de login para:", email);
       await login(email, password);
-      console.log("Login successful, should redirect soon");
+      console.log("Login processado com sucesso");
       // Navigation will be handled by the useEffect hook that watches isAuthenticated
     } catch (error: any) {
-      console.error('Login failed:', error);
+      console.error('Login falhou:', error);
       toast({
         title: "Falha no login",
         description: error?.message || "Credenciais inválidas. Por favor, tente novamente.",
@@ -54,12 +72,12 @@ const Login = () => {
     const demoPassword = 'password123';
     
     try {
-      console.log(`Attempting demo login as ${demoType}`);
+      console.log(`Tentando login de demonstração como ${demoType}`);
       await login(demoEmail, demoPassword);
-      console.log("Demo login successful, should redirect soon");
+      console.log("Login de demonstração processado", demoType);
       // Navigation will be handled by the useEffect hook
     } catch (error: any) {
-      console.error(`Demo login failed for ${demoType}:`, error);
+      console.error(`Login de demonstração falhou para ${demoType}:`, error);
       toast({
         title: "Falha no login de demonstração",
         description: error?.message || `Não foi possível entrar como ${demoType}.`,
@@ -96,6 +114,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -107,6 +126,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
             </CardContent>
@@ -116,7 +136,12 @@ const Login = () => {
                 className="w-full bg-chatbot-primary hover:bg-chatbot-dark" 
                 disabled={isLoading}
               >
-                {isLoading ? 'Entrando...' : 'Entrar'}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Entrando...
+                  </>
+                ) : 'Entrar'}
               </Button>
               
               <div className="mt-6 w-full">

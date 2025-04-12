@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from 'lucide-react';
 
 const Index = () => {
   const { isAuthenticated, loading, userRole } = useAuth();
@@ -16,7 +17,7 @@ const Index = () => {
     
     if (loading) {
       timeoutId = setTimeout(() => {
-        console.log("Loading timeout reached in Index page");
+        console.log("Tempo limite de carregamento atingido na página Index");
         setHasTimeout(true);
         toast({
           title: "Erro de carregamento",
@@ -24,7 +25,7 @@ const Index = () => {
           variant: "destructive",
         });
         navigate('/login', { replace: true });
-      }, 8000); // 8 seconds timeout
+      }, 5000); // Reduzido para 5 segundos
     }
 
     return () => {
@@ -35,16 +36,19 @@ const Index = () => {
   useEffect(() => {
     // Só redireciona quando o loading terminar para evitar redirecionamentos incorretos
     if (!loading && !hasTimeout) {
-      console.log("Index page - isAuthenticated:", isAuthenticated, "userRole:", userRole);
+      console.log("Página Index - isAuthenticated:", isAuthenticated, "userRole:", userRole);
       
-      if (isAuthenticated) {
+      if (isAuthenticated && userRole) {
         // Redireciona para o dashboard apropriado baseado no papel do usuário
         if (userRole === 'admin' || userRole === 'manager') {
+          console.log("Redirecionando para /dashboard");
           navigate('/dashboard', { replace: true });
         } else {
+          console.log("Redirecionando para /agent");
           navigate('/agent', { replace: true });
         }
       } else {
+        console.log("Usuário não autenticado, redirecionando para /login");
         navigate('/login', { replace: true });
       }
     }
@@ -52,17 +56,19 @@ const Index = () => {
   
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
-      <div className="w-10 h-10 border-4 border-chatbot-primary border-t-transparent rounded-full animate-spin"></div>
-      <p className="mt-4 text-gray-600">Carregando...</p>
-      {loading && (
-        <p className="mt-2 text-sm text-gray-500">Verificando autenticação...</p>
-      )}
-      {!loading && (
-        <p className="mt-2 text-sm text-gray-500">Redirecionando...</p>
-      )}
-      {hasTimeout && (
-        <p className="mt-2 text-sm text-red-500">Tempo limite excedido. Redirecionando para login...</p>
-      )}
+      <div className="flex flex-col items-center justify-center">
+        <Loader2 className="h-10 w-10 text-chatbot-primary animate-spin" />
+        <p className="mt-4 text-gray-600">Carregando...</p>
+        {loading && (
+          <p className="mt-2 text-sm text-gray-500">Verificando autenticação...</p>
+        )}
+        {!loading && (
+          <p className="mt-2 text-sm text-gray-500">Redirecionando...</p>
+        )}
+        {hasTimeout && (
+          <p className="mt-2 text-sm text-red-500">Tempo limite excedido. Redirecionando para login...</p>
+        )}
+      </div>
     </div>
   );
 };

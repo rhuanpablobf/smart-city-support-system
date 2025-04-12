@@ -13,7 +13,7 @@ export function useAuthService() {
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      console.log("Attempting login with Supabase...");
+      console.log("Iniciando login com Supabase...");
       // Sign in with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -21,45 +21,56 @@ export function useAuthService() {
       });
       
       if (error) {
-        console.error("Supabase login error:", error);
+        console.error("Erro de login Supabase:", error);
         throw error;
       }
       
-      if (data.user) {
-        console.log("Supabase login successful, fetching profile...");
-        // Fetch the user profile
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-        
-        if (profileError) {
-          console.error("Error fetching profile:", profileError.message);
-          throw new Error("Unable to fetch user profile");
-        }
-        
-        // Create user object from profile data
-        const user: User = {
-          id: profileData.id,
-          name: profileData.name || data.user.email?.split('@')[0] || '',
-          email: profileData.email || data.user.email || '',
-          role: profileData.role,
-          avatar: profileData.avatar || '',
-          department: profileData.department_id,
-          maxSimultaneousChats: profileData.max_simultaneous_chats
-        };
-        
-        console.log("Setting current user:", user.role);
-        setCurrentUser(user);
-        
-        toast({
-          title: "Login bem-sucedido",
-          description: `Bem-vindo de volta, ${user.name}!`,
-        });
+      if (!data.user) {
+        console.error("Login retornou sem usuário");
+        throw new Error("Não foi possível autenticar o usuário");
       }
+      
+      console.log("Login Supabase bem-sucedido, buscando perfil...");
+      
+      // Fetch the user profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .maybeSingle();
+      
+      if (profileError) {
+        console.error("Erro ao buscar perfil:", profileError.message);
+        throw new Error("Não foi possível buscar o perfil do usuário");
+      }
+      
+      if (!profileData) {
+        console.error("Nenhum perfil encontrado para o usuário");
+        throw new Error("Perfil de usuário não encontrado");
+      }
+      
+      // Create user object from profile data
+      const user: User = {
+        id: profileData.id,
+        name: profileData.name || data.user.email?.split('@')[0] || '',
+        email: profileData.email || data.user.email || '',
+        role: profileData.role,
+        avatar: profileData.avatar || '',
+        department: profileData.department_id,
+        maxSimultaneousChats: profileData.max_simultaneous_chats
+      };
+      
+      console.log("Definindo usuário atual:", user.role);
+      setCurrentUser(user);
+      
+      toast({
+        title: "Login bem-sucedido",
+        description: `Bem-vindo de volta, ${user.name}!`,
+      });
+      
+      return user;
     } catch (error: any) {
-      console.error("Login failed with error:", error);
+      console.error("Login falhou com erro:", error);
       toast({
         title: "Falha no login",
         description: error.message || "Ocorreu um erro desconhecido",
@@ -73,12 +84,12 @@ export function useAuthService() {
 
   const logout = useCallback(async () => {
     try {
-      console.log("Logging out...");
+      console.log("Realizando logout...");
       setLoading(true);
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error("Logout error:", error);
+        console.error("Erro no logout:", error);
         throw error;
       }
       
@@ -89,7 +100,7 @@ export function useAuthService() {
         description: "Você foi desconectado com sucesso.",
       });
     } catch (error: any) {
-      console.error("Logout error:", error);
+      console.error("Erro no logout:", error);
       toast({
         title: "Erro ao desconectar",
         description: error.message || "Ocorreu um erro ao tentar desconectar",
@@ -102,11 +113,14 @@ export function useAuthService() {
 
   const hasPermission = useCallback((requiredRole: UserRole): boolean => {
     if (!currentUser) {
-      console.log("hasPermission: No current user");
+      console.log("hasPermission: Sem usuário atual");
       return false;
     }
-    const hasRole = ROLE_HIERARCHY[currentUser.role] >= ROLE_HIERARCHY[requiredRole];
-    console.log(`hasPermission: User role ${currentUser.role}, required role ${requiredRole}, result: ${hasRole}`);
+    const userRoleLevel = ROLE_HIERARCHY[currentUser.role] || 0;
+    const requiredRoleLevel = ROLE_HIERARCHY[requiredRole] || 0;
+    
+    const hasRole = userRoleLevel >= requiredRoleLevel;
+    console.log(`hasPermission: Papel do usuário ${currentUser.role} (${userRoleLevel}), papel necessário ${requiredRole} (${requiredRoleLevel}), resultado: ${hasRole}`);
     return hasRole;
   }, [currentUser]);
 

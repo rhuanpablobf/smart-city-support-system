@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     
     if (loading) {
       timeoutId = setTimeout(() => {
-        console.log("Loading timeout reached, forcing navigation to login");
+        console.log("Tempo limite de carregamento atingido, forçando navegação para login");
         setLoadingTimeout(true);
         // Show error message to the user
         toast({
@@ -34,7 +34,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         });
         // Force logout to reset the authentication state
         logout().catch(console.error);
-      }, 10000); // 10 seconds timeout
+      }, 5000); // Reduzido para 5 segundos
     }
 
     return () => {
@@ -42,13 +42,13 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     };
   }, [loading, toast, logout]);
 
-  console.log("ProtectedRoute - loading:", loading, "isAuthenticated:", isAuthenticated);
+  console.log("ProtectedRoute - loading:", loading, "isAuthenticated:", isAuthenticated, "loadingTimeout:", loadingTimeout);
   
   if (loading && !loadingTimeout) {
     // Mostrar um spinner de carregamento enquanto verifica a autenticação
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="w-10 h-10 border-4 border-chatbot-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+        <Loader2 className="h-10 w-10 text-chatbot-primary animate-spin mb-4" />
         <p className="text-gray-600 text-center">Verificando permissões...</p>
         <p className="text-sm text-gray-500 text-center mt-2">
           Isso pode levar alguns segundos...
@@ -59,18 +59,18 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
 
   if (loadingTimeout || !isAuthenticated) {
     // Redirecionar para login se o usuário não estiver autenticado ou timeout ocorrer
-    console.log("User not authenticated or timeout occurred, redirecting to login");
+    console.log("Usuário não autenticado ou tempo limite ocorreu, redirecionando para login");
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (requiredRole && !hasPermission(requiredRole)) {
     // Redirecionar para página não autorizada se o usuário não tiver a função necessária
-    console.log("User does not have required role:", requiredRole);
+    console.log("Usuário não possui o papel necessário:", requiredRole);
     return <Navigate to="/unauthorized" replace />;
   }
 
   // Usuário está autenticado e tem a função necessária
-  console.log("User is authenticated with required permissions");
+  console.log("Usuário está autenticado com as permissões necessárias");
   return <>{children}</>;
 };
 
