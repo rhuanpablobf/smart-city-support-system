@@ -1,7 +1,6 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { formatConversation } from '../utils/conversationFormatters';
-import { cleanAbandonedWaitingConversations } from '../cleanup/abandonedConversationsCleanup';
+import { cleanupAbandonedConversations } from '../cleanup/abandonedConversationsCleanup';
 
 /**
  * Busca conversas para o painel do atendente
@@ -15,7 +14,7 @@ export const fetchAgentConversations = async (agentId?: string) => {
     }
 
     // Limpar conversas de clientes que desistiram (mais de 3 minutos sem atividade em espera)
-    await cleanAbandonedWaitingConversations();
+    await cleanupAbandonedConversations();
 
     // Buscar conversas ativas deste agente
     const { data: activeConversations, error: activeError } = await supabase

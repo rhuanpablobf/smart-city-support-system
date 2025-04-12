@@ -1,125 +1,107 @@
 import { supabase } from '@/integrations/supabase/client';
-import { ConversationStatus } from '@/types';
+import { Conversation, ConversationStatus } from '@/types';
 
-export const countActiveAgents = async (): Promise<number> => {
-  try {
-    const { count, error } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'active');
+export interface AgentDashboardStats {
+  activeChats: number;
+  maxChats: number;
+  waitingChats: number;
+  avgWaitTime: number;
+  completedChats: number;
+  completedChangePercent: number;
+  abandonedChats: number;
+  abandonedRate: number;
+}
 
-    if (error) {
-      throw error;
-    }
-
-    return count || 0;
-  } catch (error) {
-    console.error('Error counting active agents:', error);
-    return 0;
-  }
+const get24HoursAgo = () => {
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  return twentyFourHoursAgo.toISOString();
 };
 
-export const countWaitingConversations = async (): Promise<number> => {
-    try {
-      const { count, error } = await supabase
-        .from('conversations')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'waiting');
-  
-      if (error) {
-        throw error;
-      }
-  
-      return count || 0;
-    } catch (error) {
-      console.error('Error counting waiting conversations:', error);
-      return 0;
+const calculatePercentageChange = (current: number, previous: number): number => {
+  if (previous === 0) {
+    return current > 0 ? 100 : 0; // Avoid division by zero
+  }
+  return ((current - previous) / previous) * 100;
+};
+
+const calculateAbandonedRate = (abandonedChats: number, completedChats: number): number => {
+    const totalChats = abandonedChats + completedChats;
+    if (totalChats === 0) {
+        return 0;
     }
+    return (abandonedChats / totalChats) * 100;
+};
+
+export const fetchAgentDashboardStats = async (agentId?: string): Promise<AgentDashboardStats> => {
+  if (!agentId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    agentId = user?.id;
+  }
+
+  // Fetch active chats
+  const { count: activeChatsCount } = await supabase
+    .from('conversations')
+    .select('*', { count: 'exact', head: true })
+    .eq('agent_id', agentId)
+    .eq('status', 'active');
+
+  const activeChats = activeChatsCount || 0;
+
+  // Fetch waiting chats
+  const { count: waitingChatsCount } = await supabase
+    .from('conversations')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'waiting');
+
+  const waitingChats = waitingChatsCount || 0;
+
+  // Fetch completed chats for today
+  const { count: completedChatsTodayCount } = await supabase
+    .from('conversations')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'closed')
+    .gte('updated_at', new Date().toISOString().slice(0, 10));
+
+  const completedChats = completedChatsTodayCount || 0;
+
+  // Fetch completed chats for the previous 24 hours
+  const twentyFourHoursAgo = get24HoursAgo();
+  const { count: completedChatsYesterdayCount } = await supabase
+    .from('conversations')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'closed')
+    .gte('updated_at', twentyFourHoursAgo)
+    .lt('updated_at', new Date().toISOString().slice(0, 10));
+
+  const completedChatsYesterday = completedChatsYesterdayCount || 0;
+
+  // Calculate percentage change in completed chats
+  const completedChangePercent = calculatePercentageChange(completedChats, completedChatsYesterday);
+
+  // Fetch abandoned chats
+   const { count: abandonedChatsCount } = await supabase
+    .from('conversations')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'abandoned')
+    .gte('updated_at', new Date().toISOString().slice(0, 10));
+
+  const abandonedChats = abandonedChatsCount || 0;
+
+  // Calculate abandoned rate
+  const abandonedRate = calculateAbandonedRate(abandonedChats, completedChats);
+
+  // Mocked average wait time (implement the actual calculation later)
+  const avgWaitTime = 5;
+
+  return {
+    activeChats,
+    maxChats: 5, // Assuming a default value, replace with actual logic if needed
+    waitingChats,
+    avgWaitTime,
+    completedChats,
+    completedChangePercent,
+    abandonedChats,
+    abandonedRate
   };
-
-export const countOpenConversations = async (): Promise<number> => {
-  try {
-    const { count, error } = await supabase
-      .from('conversations')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'active');
-
-    if (error) {
-      throw error;
-    }
-
-    return count || 0;
-  } catch (error) {
-    console.error('Error counting open conversations:', error);
-    return 0;
-  }
-};
-
-// Update the countConversationsByStatus function to handle 'completed' and 'abandoned'
-export const countConversationsByStatus = async (status: ConversationStatus | 'completed' | 'abandoned'): Promise<number> => {
-  try {
-    let query = supabase.from('conversations').select('id', { count: 'exact', head: true });
-    
-    // Handle completed conversations (which are marked as 'closed' in the database)
-    if (status === 'completed') {
-      query = query.eq('status', 'closed' as ConversationStatus);
-    } 
-    // Handle all other statuses normally
-    else {
-      query = query.eq('status', status as ConversationStatus);
-    }
-    
-    const { count, error } = await query;
-    
-    if (error) {
-      throw error;
-    }
-    
-    return count || 0;
-  } catch (error) {
-    console.error(`Error counting conversations with status ${status}:`, error);
-    return 0;
-  }
-};
-
-// Update getCompletedToday function
-export const getCompletedToday = async (): Promise<number> => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const { count, error } = await supabase
-      .from('conversations')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'closed' as ConversationStatus)
-      .gte('updated_at', today.toISOString());
-    
-    if (error) {
-      throw error;
-    }
-    
-    return count || 0;
-  } catch (error) {
-    console.error('Error getting completed conversations today:', error);
-    return 0;
-  }
-};
-
-// Update getAbandonedConversations function
-export const getAbandonedConversations = async (): Promise<number> => {
-  try {
-    const { count, error } = await supabase
-      .from('conversations')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'abandoned' as ConversationStatus);
-    
-    if (error) {
-      throw error;
-    }
-    
-    return count || 0;
-  } catch (error) {
-    console.error('Error getting abandoned conversations:', error);
-    return 0;
-  }
 };

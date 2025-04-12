@@ -1,3 +1,4 @@
+
 export type UserRole = 'admin' | 'manager' | 'agent' | 'user';
 
 export interface User {
@@ -10,11 +11,13 @@ export interface User {
   department_id: string | null;
   status: 'active' | 'inactive';
   maxSimultaneousChats: number;
+  serviceIds?: string[]; // Add the serviceIds property that was missing
 }
 
 export interface Department {
   id: string;
   name: string;
+  description?: string; // Add description field that was referenced
 }
 
 export interface FAQItem {
@@ -37,4 +40,48 @@ export interface Conversation {
   department_id: string | null;
   agent_id: string | null;
   user_id: string | null;
+  userCpf?: string;
+  departmentName?: string;
+  serviceName?: string;
+  lastMessageAt?: string;
+}
+
+// Add missing types that were referenced in errors
+export interface Service {
+  id: string;
+  name: string;
+  department_id: string | null;
+}
+
+export interface QAItem {
+  id: string;
+  question: string;
+  answer: string;
+  service_id?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  timestamp: string;
+  type: 'user' | 'agent' | 'system' | 'bot';
+}
+
+export interface UserFormValues {
+  id?: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  department_id?: string | null;
+  status: 'active' | 'inactive';
+  maxSimultaneousChats: number;
+  serviceIds?: string[];
+}
+
+export interface ServiceAttendanceData {
+  name: string;
+  value: number;
+  color: string;
 }
