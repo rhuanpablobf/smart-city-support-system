@@ -72,6 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           role: determineRole(userData.email || ''),
           avatar: userMetadata?.avatar || '',
           department: null,
+          status: 'active', // Add default status
           maxSimultaneousChats: 5
         };
         

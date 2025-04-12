@@ -46,6 +46,7 @@ export function useAuthService() {
         avatar: userMetadata.avatar || '',
         // Valores padrão para outros campos
         department: null,
+        status: 'active', // Add default status
         maxSimultaneousChats: 5
       };
       
