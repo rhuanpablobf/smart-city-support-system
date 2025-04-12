@@ -22,7 +22,7 @@ const AgentDashboard = () => {
         />
         
         <ChatContainer 
-          activeChats={stats.activeChats} 
+          activeChats={stats.myActiveChats} 
           waitingChats={stats.waitingChats} 
         />
       </div>

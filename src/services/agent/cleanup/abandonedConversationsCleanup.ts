@@ -44,7 +44,7 @@ export const cleanupAbandonedConversations = async () => {
       const { error: updateError } = await supabase
         .from('conversations')
         .update({ 
-          status: 'abandoned' as ConversationStatus, 
+          status: 'abandoned', 
           updated_at: new Date().toISOString() 
         })
         .in('id', abandonedIds);

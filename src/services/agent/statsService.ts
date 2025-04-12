@@ -33,8 +33,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     // Get agent status count
     const { data: agentStatusData, error: agentError } = await supabase
       .from('agent_statuses')
-      .select('status')
-      .is('id', 'not null');
+      .select('status');
       
     if (agentError) throw agentError;
     
@@ -81,7 +80,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     const { data: waitingTimeData, error: waitingTimeError } = await supabase
       .from('conversations')
       .select('created_at, updated_at')
-      .eq('status', 'completed' as ConversationStatus);
+      .eq('status', 'completed');
       
     if (waitingTimeError) throw waitingTimeError;
     
@@ -102,7 +101,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     const { count: activeChatsCount, error: activeChatsError } = await supabase
       .from('conversations')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'active' as ConversationStatus)
+      .eq('status', 'active')
       .eq('agent_id', user?.id || '');
       
     if (activeChatsError) throw activeChatsError;
@@ -115,7 +114,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     const { count: abandonedCount } = await supabase
       .from('conversations')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'abandoned' as ConversationStatus);
+      .eq('status', 'abandoned');
     
     // Construct the return object to match what the components expect
     return {
