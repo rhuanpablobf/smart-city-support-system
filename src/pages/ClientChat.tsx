@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -63,7 +64,7 @@ const ClientChat = () => {
   const startConversation = async (departmentId: string, serviceId: string, cpf: string) => {
     setLoading(true);
     try {
-      // Generate a random user ID if the user is not logged in
+      // Generate a random user ID for anonymous users
       const userId = crypto.randomUUID();
       
       // Create a new conversation
@@ -71,7 +72,7 @@ const ClientChat = () => {
         .from('conversations')
         .insert({
           user_cpf: cpf,
-          user_id: userId, // Add user_id field
+          user_id: userId,
           department_id: departmentId,
           service_id: serviceId,
           status: 'bot'

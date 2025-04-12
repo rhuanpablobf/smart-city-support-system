@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { ChatMessage, Conversation } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -111,7 +112,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
       // Atualizar a conversa para mostrar a hora da última mensagem
       const updatedConv = {
         ...currentConversation,
-        lastMessageAt: new Date().toISOString()
+        lastMessageAt: new Date()
       };
       setCurrentConversation(updatedConv);
       

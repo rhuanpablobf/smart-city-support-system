@@ -61,7 +61,9 @@ export interface Conversation {
   userId: string;
   userCpf: string;
   departmentId?: string;
+  departmentName?: string;
   serviceId?: string;
+  serviceName?: string;
   agentId?: string;
   status: 'bot' | 'waiting' | 'active' | 'closed';
   createdAt: Date;

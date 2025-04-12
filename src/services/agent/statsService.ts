@@ -97,9 +97,8 @@ export const fetchAgentDashboardStats = async (agentId?: string): Promise<AgentD
       completedChangePercent = Math.round(((completedCount - yesterdayCount) / yesterdayCount) * 100);
     }
     
-    // Buscar conversas que foram abandonadas
-    // Note: Removido referência a 'abandoned' que não existe no enum conversation_status_enum
-    const abandonedCount = 0; // Implementing a placeholder instead of trying to query for 'abandoned' status
+    // Para conversas abandonadas, vamos usar apenas um placeholder já que não temos esse status
+    const abandonedCount = 0; 
     const totalCompleted = completedCount;
     const abandonedRate = totalCompleted > 0 ? Math.round((abandonedCount / totalCompleted) * 100) : 0;
     
