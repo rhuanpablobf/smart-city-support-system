@@ -87,7 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email: data.email || '',
           role: data.role,
           avatar: data.avatar || '',
-          status: data.status || 'active',
+          status: (data.status || 'active') as 'active' | 'inactive',
           department: data.departments,
           department_id: data.department_id,
           maxSimultaneousChats: data.max_simultaneous_chats || 5,

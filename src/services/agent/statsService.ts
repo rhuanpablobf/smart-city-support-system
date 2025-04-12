@@ -18,10 +18,14 @@ type ConversationStatusCount = {
 };
 
 export type AgentDashboardStats = {
-  agents: AgentStatusCount;
-  conversations: ConversationStatusCount;
-  waitingTime: number; // Average in minutes
-  myActiveChats: number;
+  activeChats: number;
+  maxChats: number;
+  waitingChats: number;
+  avgWaitTime: number;
+  completedChats: number;
+  completedChangePercent: number;
+  abandonedChats: number;
+  abandonedRate: number
 };
 
 export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> => {
@@ -31,7 +35,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
       .from('agent_statuses')
       .select('status, count')
       .select('status')
-      .not('id', 'is', null);
+      .eq('id', 'is not null');
       
     if (agentError) throw agentError;
     
@@ -79,7 +83,7 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     const { data: waitingTimeData, error: waitingTimeError } = await supabase
       .from('conversations')
       .select('created_at, updated_at')
-      .eq('status', 'completed' as ConversationStatus);
+      .eq('status', 'completed');
       
     if (waitingTimeError) throw waitingTimeError;
     
@@ -113,21 +117,30 @@ export const fetchAgentDashboardStats = async (): Promise<AgentDashboardStats> =
     const { count: abandonedCount } = await supabase
       .from('conversations')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'abandoned' as ConversationStatus);
+      .eq('status', 'abandoned');
     
+    // Construct the return object to match what the components expect
     return {
-      agents: agentCount,
-      conversations: conversationCount,
-      waitingTime: averageWaitingTime,
-      myActiveChats: activeChatsCount || 0
+      activeChats: activeChatsCount || 0,
+      maxChats: 5, // Default maximum chats per agent
+      waitingChats: conversationCount.waiting || 0,
+      avgWaitTime: Math.round(averageWaitingTime * 10) / 10, // Round to 1 decimal
+      completedChats: conversationCount.completed || 0,
+      completedChangePercent: 0, // Default value since we don't have previous day data
+      abandonedChats: abandonedCount || 0,
+      abandonedRate: totalConversations ? Math.round((abandonedCount || 0) / totalConversations * 100) : 0
     };
   } catch (error) {
     console.error('Error fetching agent dashboard stats:', error);
     return {
-      agents: { online: 0, offline: 0, break: 0 },
-      conversations: { waiting: 0, active: 0, closed: 0, abandoned: 0, completed: 0, bot: 0 },
-      waitingTime: 0,
-      myActiveChats: 0
+      activeChats: 0,
+      maxChats: 5,
+      waitingChats: 0,
+      avgWaitTime: 0,
+      completedChats: 0,
+      completedChangePercent: 0,
+      abandonedChats: 0,
+      abandonedRate: 0
     };
   }
 };

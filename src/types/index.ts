@@ -49,7 +49,7 @@ export interface Service {
   id: string;
   name: string;
   department_id: string | null;
-  description?: string; // Add description property
+  description?: string; 
 }
 
 export interface QAItem {
@@ -57,7 +57,7 @@ export interface QAItem {
   question: string;
   answer: string;
   service_id?: string;
-  hasImage?: boolean; // Add missing properties
+  hasImage?: boolean;
   imageUrl?: string;
   hasLink?: boolean;
   linkUrl?: string;
@@ -71,7 +71,6 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   type: 'user' | 'agent' | 'system' | 'bot';
-  senderType?: 'user' | 'agent' | 'bot'; // Add senderType property
   read?: boolean;
 }
 

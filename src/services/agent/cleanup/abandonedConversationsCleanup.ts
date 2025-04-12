@@ -41,9 +41,9 @@ export const cleanupAbandonedConversations = async () => {
     }
     
     // Mark these conversations as abandoned
-    const abandonedIds = waitingConversations?.map(c => c.id) || [];
-    
-    if (abandonedIds.length > 0) {
+    if (waitingConversations && waitingConversations.length > 0) {
+      const abandonedIds = waitingConversations.map(c => c.id);
+      
       const { error: updateError } = await supabase
         .from('conversations')
         .update({ 
@@ -57,7 +57,7 @@ export const cleanupAbandonedConversations = async () => {
       }
     }
     
-    return waitingConversations?.map(formatConversation) || [];
+    return waitingConversations ? waitingConversations.map(formatConversation) : [];
   } catch (error) {
     console.error('Error in cleanup abandoned conversations:', error);
     return [];
