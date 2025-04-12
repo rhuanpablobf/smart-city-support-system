@@ -8,11 +8,12 @@ const Index = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
+    // Só redireciona quando o loading terminar para evitar redirecionamentos incorretos
     if (!loading) {
       console.log("Index page - isAuthenticated:", isAuthenticated, "userRole:", userRole);
       
       if (isAuthenticated) {
-        // Redirect to appropriate dashboard based on role
+        // Redireciona para o dashboard apropriado baseado no papel do usuário
         if (userRole === 'admin' || userRole === 'manager') {
           navigate('/dashboard', { replace: true });
         } else {
@@ -30,6 +31,9 @@ const Index = () => {
       <p className="mt-4 text-gray-600">Carregando...</p>
       {loading && (
         <p className="mt-2 text-sm text-gray-500">Verificando autenticação...</p>
+      )}
+      {!loading && (
+        <p className="mt-2 text-sm text-gray-500">Redirecionando...</p>
       )}
     </div>
   );

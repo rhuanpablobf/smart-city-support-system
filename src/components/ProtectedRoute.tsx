@@ -3,6 +3,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,9 +17,12 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   if (loading) {
     // Mostrar um spinner de carregamento enquanto verifica a autenticação
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-10 h-10 border-4 border-chatbot-primary border-t-transparent rounded-full animate-spin"></div>
-        <p className="ml-4 text-gray-600">Verificando permissões...</p>
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="w-10 h-10 border-4 border-chatbot-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p className="text-gray-600 text-center">Verificando permissões...</p>
+        <p className="text-sm text-gray-500 text-center mt-2">
+          Isso pode levar alguns segundos...
+        </p>
       </div>
     );
   }

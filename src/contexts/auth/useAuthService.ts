@@ -81,6 +81,7 @@ export function useAuthService() {
         description: "Você foi desconectado com sucesso.",
       });
     } catch (error: any) {
+      console.error("Logout error:", error);
       toast({
         title: "Erro ao desconectar",
         description: error.message || "Ocorreu um erro ao tentar desconectar",
