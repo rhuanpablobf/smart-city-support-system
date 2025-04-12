@@ -13,18 +13,46 @@ export const createDemoUsers = async () => {
     return;
   }
 
-  // Create demo departments
-  const { data: healthDept } = await supabase
+  // Check if demo departments already exist
+  const { data: existingDepts } = await supabase
     .from('departments')
-    .insert({ name: 'Saúde', description: 'Secretaria de Saúde' })
-    .select()
-    .single();
+    .select('name')
+    .in('name', ['Saúde', 'Educação']);
+  
+  // Create demo departments only if they don't exist
+  let healthDept, educationDept;
+  
+  if (!existingDepts || !existingDepts.some(dept => dept.name === 'Saúde')) {
+    const { data } = await supabase
+      .from('departments')
+      .insert({ name: 'Saúde', description: 'Secretaria de Saúde' })
+      .select()
+      .single();
+    healthDept = data;
+  } else {
+    const { data } = await supabase
+      .from('departments')
+      .select()
+      .eq('name', 'Saúde')
+      .single();
+    healthDept = data;
+  }
 
-  const { data: educationDept } = await supabase
-    .from('departments')
-    .insert({ name: 'Educação', description: 'Secretaria de Educação' })
-    .select()
-    .single();
+  if (!existingDepts || !existingDepts.some(dept => dept.name === 'Educação')) {
+    const { data } = await supabase
+      .from('departments')
+      .insert({ name: 'Educação', description: 'Secretaria de Educação' })
+      .select()
+      .single();
+    educationDept = data;
+  } else {
+    const { data } = await supabase
+      .from('departments')
+      .select()
+      .eq('name', 'Educação')
+      .single();
+    educationDept = data;
+  }
 
   // Create admin user
   const { data: adminAuthUser, error: adminError } = await supabase.auth.signUp({

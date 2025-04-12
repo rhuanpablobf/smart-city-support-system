@@ -19,6 +19,33 @@ const ClientChat = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Quando o departamento muda, atualiza os serviços disponíveis
+  useEffect(() => {
+    if (selectedDepartment) {
+      const fetchServicesForDepartment = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('services')
+            .select('*')
+            .eq('department_id', selectedDepartment);
+
+          if (error) throw error;
+          setServices(data);
+        } catch (error) {
+          toast({
+            title: "Erro ao carregar serviços",
+            description: "Não foi possível carregar os serviços para este departamento.",
+            variant: "destructive",
+          });
+        }
+      };
+
+      fetchServicesForDepartment();
+    } else {
+      setServices([]);
+    }
+  }, [selectedDepartment, toast]);
+
   useEffect(() => {
     // Fetch departments
     const fetchDepartments = async () => {
@@ -29,39 +56,29 @@ const ClientChat = () => {
 
         if (error) throw error;
         setDepartments(data);
-      } catch (error: any) {
+      } catch (error) {
         toast({
           title: "Erro ao carregar departamentos",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-    };
-
-    // Fetch services
-    const fetchServices = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('services')
-          .select('*');
-
-        if (error) throw error;
-        setServices(data);
-      } catch (error: any) {
-        toast({
-          title: "Erro ao carregar serviços",
-          description: error.message,
+          description: "Não foi possível carregar os departamentos.",
           variant: "destructive",
         });
       }
     };
 
     fetchDepartments();
-    fetchServices();
   }, [toast]);
 
   // Function to start a new conversation
-  const startConversation = async (departmentId: string, serviceId: string, cpf: string) => {
+  const startConversation = async () => {
+    if (!selectedDepartment || !selectedService || !cpf) {
+      toast({
+        title: "Dados incompletos",
+        description: "Por favor, preencha todos os campos para iniciar o atendimento.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
     try {
       // Generate a random user ID for anonymous users
@@ -73,8 +90,8 @@ const ClientChat = () => {
         .insert({
           user_cpf: cpf,
           user_id: userId,
-          department_id: departmentId,
-          service_id: serviceId,
+          department_id: selectedDepartment,
+          service_id: selectedService,
           status: 'bot'
         })
         .select()
@@ -84,10 +101,11 @@ const ClientChat = () => {
       
       // Redirect to the chat page with the new conversation ID
       navigate(`/chat?conversationId=${conversation.id}`);
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Erro ao iniciar conversa:", error);
       toast({
         title: "Erro ao iniciar conversa",
-        description: error.message,
+        description: "Não foi possível iniciar a conversa. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -118,7 +136,7 @@ const ClientChat = () => {
                 </div>
                 <div className="relative">
                   <Label htmlFor="department">Departamento</Label>
-                  <Select onValueChange={setSelectedDepartment}>
+                  <Select onValueChange={setSelectedDepartment} value={selectedDepartment}>
                     <SelectTrigger className="mt-1 w-full rounded-md border border-gray-200 px-5 py-3 text-base text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-blue-300">
                       <SelectValue placeholder="Selecione um departamento" />
                     </SelectTrigger>
@@ -133,9 +151,9 @@ const ClientChat = () => {
                 </div>
                 <div className="relative">
                   <Label htmlFor="service">Serviço</Label>
-                  <Select onValueChange={setSelectedService}>
+                  <Select onValueChange={setSelectedService} value={selectedService} disabled={!selectedDepartment || services.length === 0}>
                     <SelectTrigger className="mt-1 w-full rounded-md border border-gray-200 px-5 py-3 text-base text-gray-900 focus:border-blue-400 focus:outline-none focus:ring-blue-300">
-                      <SelectValue placeholder="Selecione um serviço" />
+                      <SelectValue placeholder={!selectedDepartment ? "Selecione um departamento primeiro" : "Selecione um serviço"} />
                     </SelectTrigger>
                     <SelectContent>
                       {services.map((service) => (
@@ -145,12 +163,17 @@ const ClientChat = () => {
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedDepartment && services.length === 0 && (
+                    <p className="text-xs text-red-500 mt-1">
+                      Nenhum serviço disponível para este departamento.
+                    </p>
+                  )}
                 </div>
                 <div className="relative">
                   <Button
                     disabled={loading || !selectedDepartment || !selectedService || !cpf}
                     className="bg-blue-500 text-white rounded-md px-5 py-3 w-full disabled:bg-gray-400"
-                    onClick={() => startConversation(selectedDepartment, selectedService, cpf)}
+                    onClick={startConversation}
                   >
                     {loading ? (
                       <>
