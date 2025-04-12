@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Conversation } from '@/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -19,7 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/chat/ui/Badge';
+import Badge from '@/components/chat/ui/Badge';
 
 interface ChatHeaderProps {
   conversation: Conversation;
