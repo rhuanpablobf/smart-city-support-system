@@ -10,7 +10,7 @@ import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { fetchAgentConversations, acceptWaitingConversation } from '@/services/agentDashboardService';
+import { fetchAgentConversations, acceptWaitingConversation } from '@/services/agent';
 import { useToast } from '@/components/ui/use-toast';
 
 const ChatList = () => {

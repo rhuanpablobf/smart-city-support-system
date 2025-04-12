@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ChatProvider } from '@/contexts/ChatContext';
 import ChatList from '@/components/chat/ChatList';
@@ -20,7 +19,7 @@ import {
   XCircle,
   AlertCircle
 } from 'lucide-react';
-import { fetchAgentDashboardStats, AgentDashboardStats } from '@/services/agentDashboardService';
+import { fetchAgentDashboardStats, AgentDashboardStats } from '@/services/agent';
 import { useToast } from '@/components/ui/use-toast';
 
 const AgentDashboard = () => {

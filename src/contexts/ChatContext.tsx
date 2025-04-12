@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { ChatMessage, Conversation } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -7,7 +6,7 @@ import {
   fetchConversationMessages, 
   sendMessage as apiSendMessage,
   closeConversation as apiCloseConversation
-} from '@/services/agentDashboardService';
+} from '@/services/agent';
 
 interface ConversationsData {
   active: Conversation[];
