@@ -8,6 +8,8 @@ export interface User {
   role: UserRole;
   avatar?: string;
   department?: string;
+  departmentId?: string;
+  serviceIds?: string[];
   status: 'active' | 'inactive';
   maxSimultaneousChats?: number;
 }

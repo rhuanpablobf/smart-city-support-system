@@ -9,7 +9,8 @@ export interface UserFormValues {
   name: string;
   email: string;
   role: 'admin' | 'manager' | 'agent';
-  department: string;
+  departmentId?: string;
+  serviceIds?: string[];
   status: 'active' | 'inactive';
 }
 
@@ -32,7 +33,8 @@ export function useUserManagement(initialUsers: User[]) {
       name: userData.name,
       email: userData.email,
       role: userData.role,
-      department: userData.department,
+      departmentId: userData.departmentId,
+      serviceIds: userData.serviceIds,
       status: userData.status
     };
     

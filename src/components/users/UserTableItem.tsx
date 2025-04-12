@@ -74,7 +74,7 @@ export const UserTableItem: React.FC<UserTableItemProps> = ({
       <div>
         <Badge 
           variant="outline" 
-          className={getStatusBadgeColor(user.status)}
+          className={getStatusBadgeColor(user.status || 'inactive')}
         >
           {user.status === 'active' ? 'Ativo' : 'Inativo'}
         </Badge>
