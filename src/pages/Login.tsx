@@ -1,33 +1,48 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
   const from = location.state?.from?.pathname || '/';
+
+  // Effect to handle redirection when already authenticated
+  useEffect(() => {
+    console.log("Login check - isAuthenticated:", isAuthenticated);
+    if (isAuthenticated) {
+      console.log("User is authenticated, navigating to:", from);
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
+      console.log("Attempting to login with:", email);
       await login(email, password);
-      navigate(from);
-    } catch (error) {
+      console.log("Login successful, should redirect soon");
+      // Navigation will be handled by the useEffect hook that watches isAuthenticated
+    } catch (error: any) {
       console.error('Login failed:', error);
-      // Error toast is handled in the AuthContext
+      toast({
+        title: "Falha no login",
+        description: error?.message || "Credenciais inválidas. Por favor, tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -39,10 +54,17 @@ const Login = () => {
     const demoPassword = 'password123';
     
     try {
+      console.log(`Attempting demo login as ${demoType}`);
       await login(demoEmail, demoPassword);
-      navigate(from);
-    } catch (error) {
+      console.log("Demo login successful, should redirect soon");
+      // Navigation will be handled by the useEffect hook
+    } catch (error: any) {
       console.error(`Demo login failed for ${demoType}:`, error);
+      toast({
+        title: "Falha no login de demonstração",
+        description: error?.message || `Não foi possível entrar como ${demoType}.`,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

@@ -8,7 +8,7 @@ interface AuthContextType {
   currentUser: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   userRole: UserRole | null;
   hasPermission: (requiredRole: UserRole) => boolean;
@@ -36,14 +36,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     const checkCurrentUser = async () => {
       try {
+        console.log("Checking current session...");
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Error checking session:", error.message);
+          setLoading(false);
           return;
         }
         
         if (session) {
+          console.log("Session found, user is logged in");
           // Fetch the user profile from our profiles table
           const { data: profileData, error: profileError } = await supabase
             .from('profiles')
@@ -53,10 +56,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           if (profileError) {
             console.error("Error fetching profile:", profileError.message);
+            setLoading(false);
             return;
           }
           
           if (profileData) {
+            console.log("Profile found:", profileData.role);
             const user: User = {
               id: profileData.id,
               name: profileData.name || session.user.email?.split('@')[0] || '',
@@ -68,6 +73,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
             };
             setCurrentUser(user);
           }
+        } else {
+          console.log("No session found, user is not logged in");
         }
       } catch (error) {
         console.error("Session check failed:", error);
@@ -80,6 +87,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event);
+      
       if (event === 'SIGNED_IN' && session) {
         // Fetch the profile after sign in
         const { data: profileData } = await supabase
@@ -89,6 +98,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           .single();
           
         if (profileData) {
+          console.log("Profile loaded after auth state change:", profileData.role);
           const user: User = {
             id: profileData.id,
             name: profileData.name || session.user.email?.split('@')[0] || '',
@@ -101,6 +111,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setCurrentUser(user);
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log("User signed out");
         setCurrentUser(null);
       }
     });
@@ -113,15 +124,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
+      console.log("Attempting login with Supabase...");
       // Sign in with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase login error:", error);
+        throw error;
+      }
       
       if (data.user) {
+        console.log("Supabase login successful, fetching profile...");
         // Fetch the user profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -145,6 +161,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           maxSimultaneousChats: profileData.max_simultaneous_chats
         };
         
+        console.log("Setting current user:", user.role);
         setCurrentUser(user);
         
         toast({
@@ -153,6 +170,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         });
       }
     } catch (error: any) {
+      console.error("Login failed with error:", error);
       toast({
         title: "Falha no login",
         description: error.message || "Ocorreu um erro desconhecido",
