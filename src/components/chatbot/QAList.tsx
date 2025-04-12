@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,48 +17,170 @@ import {
 } from '@/components/ui/dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-
-interface QA {
-  id: string;
-  serviceId: string;
-  question: string;
-  answer: string;
-  hasImage: boolean;
-  imageUrl?: string;
-  hasLink: boolean;
-  linkUrl?: string;
-  linkText?: string;
-}
+import { useToast } from '@/components/ui/use-toast';
+import { QAItem } from '@/types';
 
 type QAListProps = {
   serviceId: string;
 };
 
 export const QAList = ({ serviceId }: QAListProps) => {
-  const [newQA, setNewQA] = useState<Partial<QA>>({
+  const [newQA, setNewQA] = useState<Partial<QAItem>>({
     serviceId,
     question: '',
     answer: '',
-    hasImage: false,
-    hasLink: false,
   });
   const [openDialog, setOpenDialog] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: qaItems = [], isLoading } = useQuery({
     queryKey: ['qa-items', serviceId],
     queryFn: async () => {
-      // This would be replaced with actual API calls
-      // Mocking this since we don't have the actual table
-      return [];
+      const { data, error } = await supabase
+        .from('qa_items')
+        .select('*')
+        .eq('service_id', serviceId);
+      
+      if (error) {
+        console.error("Error fetching QA items:", error);
+        throw error;
+      }
+      
+      return data.map(item => ({
+        id: item.id,
+        serviceId: item.service_id,
+        question: item.question,
+        answer: item.answer,
+        hasImage: item.has_image,
+        imageUrl: item.image_url,
+        hasLink: item.has_link,
+        linkUrl: item.link_url,
+        linkText: item.link_text
+      }));
     },
+  });
+
+  // Add QA Item mutation
+  const addQAMutation = useMutation({
+    mutationFn: async (qaItem: Partial<QAItem>) => {
+      const { data, error } = await supabase
+        .from('qa_items')
+        .insert({
+          service_id: qaItem.serviceId,
+          question: qaItem.question,
+          answer: qaItem.answer,
+          has_image: qaItem.hasImage || false,
+          image_url: qaItem.imageUrl || null,
+          has_link: qaItem.hasLink || false,
+          link_url: qaItem.linkUrl || null,
+          link_text: qaItem.linkText || null
+        })
+        .select();
+
+      if (error) {
+        console.error("Error adding QA item:", error);
+        throw error;
+      }
+      return data[0];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qa-items', serviceId] });
+      toast({
+        title: "Pergunta adicionada",
+        description: "A pergunta e resposta foram adicionadas com sucesso."
+      });
+    },
+    onError: (error) => {
+      console.error("Error adding QA item:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível adicionar a pergunta. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update QA Item mutation
+  const updateQAMutation = useMutation({
+    mutationFn: async (qaItem: Partial<QAItem>) => {
+      const { data, error } = await supabase
+        .from('qa_items')
+        .update({
+          question: qaItem.question,
+          answer: qaItem.answer,
+          has_image: qaItem.hasImage || false,
+          image_url: qaItem.imageUrl || null,
+          has_link: qaItem.hasLink || false,
+          link_url: qaItem.linkUrl || null,
+          link_text: qaItem.linkText || null
+        })
+        .eq('id', qaItem.id)
+        .select();
+
+      if (error) {
+        console.error("Error updating QA item:", error);
+        throw error;
+      }
+      return data[0];
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qa-items', serviceId] });
+      toast({
+        title: "Pergunta atualizada",
+        description: "A pergunta e resposta foram atualizadas com sucesso."
+      });
+    },
+    onError: (error) => {
+      console.error("Error updating QA item:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a pergunta. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Delete QA Item mutation
+  const deleteQAMutation = useMutation({
+    mutationFn: async (qaId: string) => {
+      const { error } = await supabase
+        .from('qa_items')
+        .delete()
+        .eq('id', qaId);
+
+      if (error) {
+        console.error("Error deleting QA item:", error);
+        throw error;
+      }
+      return qaId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qa-items', serviceId] });
+      toast({
+        title: "Pergunta removida",
+        description: "A pergunta e resposta foram removidas com sucesso."
+      });
+    },
+    onError: (error) => {
+      console.error("Error deleting QA item:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível remover a pergunta. Tente novamente.",
+        variant: "destructive"
+      });
+    }
   });
 
   const handleSaveQA = () => {
     if (newQA.question && newQA.answer) {
-      // This would be a real API call to save Q&A
-      // addQAMutation.mutate(newQA);
+      if (isEditing) {
+        updateQAMutation.mutate(newQA);
+      } else {
+        addQAMutation.mutate(newQA);
+      }
+      
       setNewQA({
         serviceId,
         question: '',
@@ -72,10 +194,10 @@ export const QAList = ({ serviceId }: QAListProps) => {
   };
 
   const handleDeleteQA = (qaId: string) => {
-    // deleteQAMutation.mutate(qaId);
+    deleteQAMutation.mutate(qaId);
   };
 
-  const handleEditQA = (qa: QA) => {
+  const handleEditQA = (qa: QAItem) => {
     setNewQA({ ...qa });
     setIsEditing(true);
     setOpenDialog(true);
@@ -205,7 +327,7 @@ export const QAList = ({ serviceId }: QAListProps) => {
                 <div>
                   <p className="font-medium">{qa.question}</p>
                   <p className="text-muted-foreground mt-1">{qa.answer}</p>
-                  {qa.hasLink && (
+                  {qa.hasLink && qa.linkUrl && (
                     <a href={qa.linkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline block mt-1">
                       {qa.linkText || qa.linkUrl}
                     </a>

@@ -90,7 +90,9 @@ export interface QAItem {
   serviceId: string;
   question: string;
   answer: string;
+  hasImage?: boolean;
   imageUrl?: string;
+  hasLink?: boolean;
   linkUrl?: string;
   linkText?: string;
 }

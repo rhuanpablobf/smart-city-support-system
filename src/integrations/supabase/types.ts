@@ -287,6 +287,56 @@ export type Database = {
           },
         ]
       }
+      qa_items: {
+        Row: {
+          answer: string
+          created_at: string
+          has_image: boolean
+          has_link: boolean
+          id: string
+          image_url: string | null
+          link_text: string | null
+          link_url: string | null
+          question: string
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          has_image?: boolean
+          has_link?: boolean
+          id?: string
+          image_url?: string | null
+          link_text?: string | null
+          link_url?: string | null
+          question: string
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          has_image?: boolean
+          has_link?: boolean
+          id?: string
+          image_url?: string | null
+          link_text?: string | null
+          link_url?: string | null
+          question?: string
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qa_items_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       satisfaction_surveys: {
         Row: {
           comment: string | null
