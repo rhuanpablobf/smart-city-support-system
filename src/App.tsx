@@ -6,6 +6,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ChatProvider } from "./contexts/chat";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 import Login from "./pages/Login";
@@ -33,90 +34,92 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/unauthorized" element={<Unauthorized />} />
-              <Route path="/" element={<Index />} />
-              <Route path="/chat" element={<ClientChat />} />
-              
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <AppLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Navigate to="/agent" replace />} />
+        <ChatProvider>
+          <TooltipProvider>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/unauthorized" element={<Unauthorized />} />
+                <Route path="/" element={<Index />} />
+                <Route path="/chat" element={<ClientChat />} />
                 
                 <Route
-                  path="agent"
+                  path="/"
                   element={
-                    <ProtectedRoute requiredRole="agent">
-                      <AgentDashboard />
+                    <ProtectedRoute>
+                      <AppLayout />
                     </ProtectedRoute>
                   }
-                />
+                >
+                  <Route index element={<Navigate to="/agent" replace />} />
+                  
+                  <Route
+                    path="agent"
+                    element={
+                      <ProtectedRoute requiredRole="agent">
+                        <AgentDashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  
+                  <Route
+                    path="dashboard"
+                    element={
+                      <ProtectedRoute requiredRole="manager">
+                        <Dashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  
+                  <Route
+                    path="chatbot"
+                    element={
+                      <ProtectedRoute requiredRole="manager">
+                        <ChatbotConfig />
+                      </ProtectedRoute>
+                    }
+                  />
+                  
+                  <Route
+                    path="users"
+                    element={
+                      <ProtectedRoute requiredRole="admin">
+                        <UsersManagement />
+                      </ProtectedRoute>
+                    }
+                  />
+                  
+                  <Route
+                    path="reports"
+                    element={
+                      <ProtectedRoute requiredRole="manager">
+                        <Reports />
+                      </ProtectedRoute>
+                    }
+                  />
+                  
+                  <Route
+                    path="profile"
+                    element={
+                      <ProfileSettings />
+                    }
+                  />
+                  
+                  <Route
+                    path="settings"
+                    element={
+                      <ProfileSettings />
+                    }
+                  />
+                </Route>
                 
-                <Route
-                  path="dashboard"
-                  element={
-                    <ProtectedRoute requiredRole="manager">
-                      <Dashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                <Route
-                  path="chatbot"
-                  element={
-                    <ProtectedRoute requiredRole="manager">
-                      <ChatbotConfig />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                <Route
-                  path="users"
-                  element={
-                    <ProtectedRoute requiredRole="admin">
-                      <UsersManagement />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                <Route
-                  path="reports"
-                  element={
-                    <ProtectedRoute requiredRole="manager">
-                      <Reports />
-                    </ProtectedRoute>
-                  }
-                />
-                
-                <Route
-                  path="profile"
-                  element={
-                    <ProfileSettings />
-                  }
-                />
-                
-                <Route
-                  path="settings"
-                  element={
-                    <ProfileSettings />
-                  }
-                />
-              </Route>
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-          <Toaster />
-          <Sonner />
-        </TooltipProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+            <Toaster />
+            <Sonner />
+          </TooltipProvider>
+        </ChatProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

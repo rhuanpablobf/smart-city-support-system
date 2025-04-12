@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useChat } from '@/contexts/ChatContext';
+import { useChat } from '@/contexts/chat';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { MessageSquarePlus, Bot, User, Search } from 'lucide-react';

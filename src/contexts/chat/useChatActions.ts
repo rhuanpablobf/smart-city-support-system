@@ -1,40 +1,15 @@
 
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
+import { useState } from 'react';
 import { ChatMessage, Conversation } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { 
-  fetchAgentConversations, 
-  fetchConversationMessages, 
   sendMessage as apiSendMessage,
-  closeConversation as apiCloseConversation
+  closeConversation as apiCloseConversation,
+  fetchConversationMessages
 } from '@/services/agent';
+import { ConversationsData } from './types';
 
-interface ConversationsData {
-  active: Conversation[];
-  waiting: Conversation[];
-  bot: Conversation[];
-}
-
-interface ChatContextType {
-  conversations: ConversationsData;
-  setConversations: (data: ConversationsData) => void;
-  currentConversation: Conversation | null;
-  messages: ChatMessage[];
-  loading: boolean;
-  sendMessage: (content: string, attachments?: File[]) => Promise<void>;
-  selectConversation: (conversationId: string) => void;
-  startNewChat: () => void;
-  transferChat: (agentId: string) => void;
-  closeChat: () => void;
-}
-
-const ChatContext = createContext<ChatContextType | null>(null);
-
-interface ChatProviderProps {
-  children: ReactNode;
-}
-
-export function ChatProvider({ children }: ChatProviderProps) {
+export const useChatActions = () => {
   const [conversations, setConversationsState] = useState<ConversationsData>({
     active: [],
     waiting: [],
@@ -180,26 +155,18 @@ export function ChatProvider({ children }: ChatProviderProps) {
     }
   };
 
-  const value = {
+  return {
     conversations,
     setConversations,
     currentConversation,
+    setCurrentConversation,
     messages,
+    setMessages,
     loading,
-    sendMessage,
     selectConversation,
     startNewChat,
+    sendMessage,
     transferChat,
-    closeChat,
+    closeChat
   };
-
-  return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
-}
-
-export const useChat = () => {
-  const context = useContext(ChatContext);
-  if (context === null) {
-    throw new Error('useChat must be used within a ChatProvider');
-  }
-  return context;
 };
