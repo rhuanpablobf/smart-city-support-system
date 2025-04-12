@@ -7,45 +7,53 @@ import { v4 as uuidv4 } from 'uuid';
  * Fetch users from Supabase with their departments
  */
 export const fetchUsers = async (): Promise<User[]> => {
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select('*, departments:department_id(id, name, description)');
+  try {
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('*, departments:department_id(id, name, description)');
 
-  if (error) throw error;
+    if (error) {
+      console.error('Erro ao buscar perfis:', error.message);
+      throw error;
+    }
 
-  // Map to the format User
-  const formattedUsers: User[] = profiles.map((profile: any) => ({
-    id: profile.id,
-    name: profile.name || '',
-    email: profile.email || '',
-    role: profile.role,
-    department: profile.departments?.name || null,
-    department_id: profile.department_id || null,
-    status: profile.status || 'active', // Usar o valor do banco ou 'active' como fallback
-    avatar: profile.avatar || undefined,
-    maxSimultaneousChats: profile.max_simultaneous_chats || 5
-  }));
+    // Map to the format User
+    const formattedUsers: User[] = profiles.map((profile: any) => ({
+      id: profile.id,
+      name: profile.name || '',
+      email: profile.email || '',
+      role: profile.role,
+      department: profile.departments?.name || null,
+      department_id: profile.department_id || null,
+      status: profile.status || 'active', // Usar o valor do banco ou 'active' como fallback
+      avatar: profile.avatar || undefined,
+      maxSimultaneousChats: profile.max_simultaneous_chats || 5
+    }));
 
-  // Fetch services for each agent/manager
-  for (const user of formattedUsers) {
-    if (user.role === 'agent' || user.role === 'manager') {
-      const { data: agentServices, error: servicesError } = await supabase
-        .from('agent_services')
-        .select('service_id')
-        .eq('agent_id', user.id);
-      
-      if (servicesError) {
-        console.error('Error fetching agent services:', servicesError);
-        continue;
-      }
-      
-      if (agentServices && agentServices.length > 0) {
-        user.serviceIds = agentServices.map(as => as.service_id);
+    // Fetch services for each agent/manager
+    for (const user of formattedUsers) {
+      if (user.role === 'agent' || user.role === 'manager') {
+        const { data: agentServices, error: servicesError } = await supabase
+          .from('agent_services')
+          .select('service_id')
+          .eq('agent_id', user.id);
+        
+        if (servicesError) {
+          console.error('Error fetching agent services:', servicesError);
+          continue;
+        }
+        
+        if (agentServices && agentServices.length > 0) {
+          user.serviceIds = agentServices.map(as => as.service_id);
+        }
       }
     }
+    
+    return formattedUsers;
+  } catch (error: any) {
+    console.error('Erro ao buscar usuários:', error.message);
+    throw error;
   }
-  
-  return formattedUsers;
 };
 
 /**

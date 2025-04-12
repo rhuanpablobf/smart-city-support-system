@@ -452,6 +452,10 @@ export type Database = {
         Args: { agent_id_param: string }
         Returns: undefined
       }
+      get_current_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       has_role: {
         Args: { _role: Database["public"]["Enums"]["user_role_enum"] }
         Returns: boolean
