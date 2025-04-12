@@ -12,6 +12,7 @@ interface ConversationTabsProps {
   currentConversation: Conversation | null;
   onSelectConversation: (id: string) => void;
   onAcceptWaiting: (id: string) => void;
+  isLoading: boolean;
 }
 
 const ConversationTabs = ({ 
@@ -20,7 +21,8 @@ const ConversationTabs = ({
   botConversations,
   currentConversation,
   onSelectConversation,
-  onAcceptWaiting
+  onAcceptWaiting,
+  isLoading
 }: ConversationTabsProps) => {
   return (
     <Tabs defaultValue="active" className="flex-1 flex flex-col overflow-hidden">
@@ -65,6 +67,7 @@ const ConversationTabs = ({
           conversations={activeConversations}
           currentConversation={currentConversation}
           onSelectConversation={onSelectConversation}
+          isLoading={isLoading}
         />
       </TabsContent>
       
@@ -75,6 +78,7 @@ const ConversationTabs = ({
           onSelectConversation={onSelectConversation}
           onAcceptWaiting={onAcceptWaiting}
           showAcceptButton={true}
+          isLoading={isLoading}
         />
       </TabsContent>
       
@@ -83,6 +87,7 @@ const ConversationTabs = ({
           conversations={botConversations}
           currentConversation={currentConversation}
           onSelectConversation={onSelectConversation}
+          isLoading={isLoading}
         />
       </TabsContent>
     </Tabs>

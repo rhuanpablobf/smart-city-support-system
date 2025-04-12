@@ -61,6 +61,7 @@ const ChatList = () => {
   // Accept a waiting conversation
   const handleAcceptWaiting = async (conversationId: string) => {
     try {
+      setLoading(true);
       await acceptWaitingConversation(conversationId);
       
       // Reload conversations to reflect the change
@@ -86,6 +87,8 @@ const ChatList = () => {
         description: "Não foi possível aceitar a conversa. Tente novamente.",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,13 +107,8 @@ const ChatList = () => {
         currentConversation={currentConversation}
         onSelectConversation={selectConversation}
         onAcceptWaiting={handleAcceptWaiting}
+        isLoading={loading}
       />
-      
-      {loading && (
-        <div className="p-2 text-center text-gray-500 text-xs bg-gray-50">
-          Atualizando conversas...
-        </div>
-      )}
     </div>
   );
 };

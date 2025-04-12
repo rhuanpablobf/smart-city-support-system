@@ -4,10 +4,11 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bot, User } from 'lucide-react';
+import { Bot, User, Loader } from 'lucide-react';
 import { Conversation } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ConversationListProps {
   conversations: Conversation[];
@@ -15,6 +16,7 @@ interface ConversationListProps {
   onSelectConversation: (id: string) => void;
   onAcceptWaiting?: (id: string) => void;
   showAcceptButton?: boolean;
+  isLoading?: boolean;
 }
 
 const ConversationList = ({ 
@@ -22,8 +24,28 @@ const ConversationList = ({
   currentConversation, 
   onSelectConversation,
   onAcceptWaiting,
-  showAcceptButton
+  showAcceptButton,
+  isLoading = false
 }: ConversationListProps) => {
+  if (isLoading) {
+    return (
+      <div className="divide-y">
+        {[...Array(3)].map((_, index) => (
+          <div key={`skeleton-${index}`} className="p-3">
+            <div className="flex items-center space-x-3">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="flex-1">
+                <Skeleton className="h-4 w-3/4 mb-2" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <Skeleton className="h-6 w-16" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  
   if (conversations.length === 0) {
     return (
       <div className="p-4 text-center text-gray-500">
