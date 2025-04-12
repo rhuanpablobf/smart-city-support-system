@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChatProvider } from '@/contexts/ChatContext';
+import { ChatProvider } from '@/contexts/chat';
 import ChatList from '@/components/chat/ChatList';
 import ChatInterface from '@/components/chat/ChatInterface';
 import { Badge } from '@/components/ui/badge';
