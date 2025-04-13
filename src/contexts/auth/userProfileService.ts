@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@/types';
+import { User, UserRole } from '@/types';
 
 /**
  * Service function to fetch a user's profile from Supabase
@@ -31,9 +31,9 @@ export const fetchUserProfile = async (userId: string): Promise<User | null> => 
     
     // Determine user role based on email if it's a demo account
     const email = data.email || '';
-    let role = data.role as any;
+    let role: UserRole = data.role as UserRole;
     
-    // Override role for demo accounts
+    // Special handling for demo accounts
     if (email.endsWith('@example.com')) {
       if (email === 'admin@example.com') role = 'admin';
       else if (email === 'manager@example.com') role = 'manager';
@@ -75,4 +75,3 @@ export const fetchUserProfile = async (userId: string): Promise<User | null> => 
     throw error;
   }
 };
-

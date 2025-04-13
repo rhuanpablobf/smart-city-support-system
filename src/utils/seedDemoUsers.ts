@@ -49,6 +49,17 @@ export const createDemoUsers = async () => {
       console.log(`Created demo user: ${user.email} with role ${user.role}`);
 
       if (data.user) {
+        // Map our UserRole to the database enum values
+        let dbRole: "admin" | "manager" | "agent" | "user" = "user";
+        
+        // Map the "master" role to "admin" for database compatibility
+        // while preserving our application's distinction between them
+        if (user.role === 'master') {
+          dbRole = "admin"; // Store as admin in DB
+        } else if (user.role === 'admin' || user.role === 'manager' || user.role === 'agent') {
+          dbRole = user.role; // These roles match directly
+        }
+
         // Create or update profile with proper role
         const { error: profileError } = await supabase
           .from('profiles')
@@ -56,8 +67,7 @@ export const createDemoUsers = async () => {
             id: data.user.id,
             name: user.name,
             email: user.email,
-            // Cast role as string to match the database enum type
-            role: user.role as string,
+            role: dbRole, // Use the mapped role that matches Supabase's expected values
             status: 'active',
             max_simultaneous_chats: 5
           });
