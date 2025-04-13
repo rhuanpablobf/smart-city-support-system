@@ -34,16 +34,16 @@ class RealtimeService {
       // Create the channel with the correct syntax for Supabase v2
       const channel = supabase.channel(channelId);
       
-      // Subscribe to postgres changes with the correct API syntax and type casting
+      // Subscribe to postgres changes with the correct API syntax
       channel
         .on(
-          'postgres_changes' as any, // Use type casting to avoid TypeScript error
+          'postgres_changes',
           { 
             event, 
             schema: 'public',
             table
           },
-          (payload: any) => {
+          (payload) => {
             console.log(`Realtime update for ${table} (${event}):`, payload.eventType);
             callback(payload as PostgresChangesPayload);
           }

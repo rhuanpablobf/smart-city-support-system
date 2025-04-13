@@ -82,21 +82,8 @@ export function ChatProvider({ children }: ChatProviderProps) {
           if (conversationUpdated || messageUpdated) {
             console.log('Realtime update triggered for conversations', payload);
             
-            // Only reload if it's a relevant update (status change, new message in current conversation)
-            const statusChanged = 
-              conversationUpdated && payload.new && payload.old && 
-              typeof payload.new === 'object' && typeof payload.old === 'object' &&
-              'status' in payload.new && 'status' in payload.old && 
-              payload.new.status !== payload.old.status;
-              
-            if (statusChanged) {
-              console.log('Status changed, reloading conversations');
-              await loadConversations();
-            } else if (messageUpdated) {
-              // If it's just a new message, we might want to update just that conversation
-              // For simplicity, reload all for now
-              await loadConversations();
-            }
+            // Reload all conversations to ensure we have the latest data
+            await loadConversations();
           }
         }
       );
