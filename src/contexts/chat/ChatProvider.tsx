@@ -30,8 +30,13 @@ export function ChatProvider({ children }: ChatProviderProps) {
   // Load conversations from API - only once on initial mount
   const loadConversations = useCallback(async () => {
     try {
-      console.log("Loading conversations for user:", currentUser?.id);
-      const data = await fetchAgentConversations(currentUser?.id);
+      if (!currentUser?.id) {
+        console.log("Não foi possível carregar conversas: Usuário não autenticado");
+        return;
+      }
+
+      console.log("Loading conversations for user:", currentUser.id);
+      const data = await fetchAgentConversations(currentUser.id);
       console.log("Conversations loaded:", {
         active: data.active?.length || 0,
         waiting: data.waiting?.length || 0,
@@ -51,8 +56,18 @@ export function ChatProvider({ children }: ChatProviderProps) {
   }, [currentUser, setConversations]);
 
   useEffect(() => {
+    // Clean up function to unsubscribe all channels
+    const cleanupChannels = () => {
+      if (channelIds.length > 0) {
+        console.log("Cleaning up channels:", channelIds);
+        realtimeService.unsubscribeAll(channelIds);
+        setChannelIds([]);
+      }
+    };
+
     // Only setup subscriptions when we have a current user
     if (currentUser?.id) {
+      // Initial load of conversations
       loadConversations();
       
       // Set up realtime subscriptions for conversations and messages
@@ -68,11 +83,13 @@ export function ChatProvider({ children }: ChatProviderProps) {
             console.log('Realtime update triggered for conversations', payload);
             
             // Only reload if it's a relevant update (status change, new message in current conversation)
-            if (conversationUpdated && 
-                payload.new && payload.old && 
-                // Check if both objects exist and have a status property before comparing
-                'status' in payload.new && 'status' in payload.old && 
-                payload.new.status !== payload.old.status) {
+            const statusChanged = 
+              conversationUpdated && payload.new && payload.old && 
+              typeof payload.new === 'object' && typeof payload.old === 'object' &&
+              'status' in payload.new && 'status' in payload.old && 
+              payload.new.status !== payload.old.status;
+              
+            if (statusChanged) {
               console.log('Status changed, reloading conversations');
               await loadConversations();
             } else if (messageUpdated) {
@@ -87,12 +104,8 @@ export function ChatProvider({ children }: ChatProviderProps) {
       setChannelIds(ids);
     }
 
-    return () => {
-      // Clean up realtime subscriptions
-      if (channelIds.length > 0) {
-        realtimeService.unsubscribeAll(channelIds);
-      }
-    };
+    // Return cleanup function
+    return cleanupChannels;
   }, [currentUser, loadConversations]);
 
   const value = {

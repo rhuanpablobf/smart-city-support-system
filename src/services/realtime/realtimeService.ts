@@ -20,31 +20,33 @@ class RealtimeService {
     
     console.log(`Setting up realtime subscription for ${table} (${event})`);
     
-    // Create the channel with the correct syntax for Supabase v2
-    const channel = supabase.channel(channelId);
-    
-    // Use type assertion to fix the TypeScript error with postgres_changes
-    // This is necessary because the TypeScript definitions in supabase-js don't fully
-    // capture the runtime behavior of the Realtime API
-    (channel as any)
-      .on(
-        'postgres_changes',
-        {
-          event, 
-          schema: 'public',
-          table
-        },
-        (payload: RealtimePostgresChangesPayload<any>) => {
-          console.log(`Realtime update for ${table} (${event}):`, payload.eventType);
-          callback(payload);
-        }
-      )
-      .subscribe((status: string) => {
-        console.log(`Realtime subscription to ${table} (${event}): ${status}`);
-      });
-    
-    // Store the channel reference for future management
-    this.channels[channelId] = channel;
+    try {
+      // Create the channel with the correct syntax for Supabase v2
+      const channel = supabase.channel(channelId);
+      
+      // Use type assertion to fix the TypeScript error with postgres_changes
+      channel
+        .on(
+          'postgres_changes',
+          {
+            event, 
+            schema: 'public',
+            table
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            console.log(`Realtime update for ${table} (${event}):`, payload.eventType);
+            callback(payload);
+          }
+        )
+        .subscribe((status: string) => {
+          console.log(`Realtime subscription to ${table} (${event}): ${status}`);
+        });
+      
+      // Store the channel reference for future management
+      this.channels[channelId] = channel;
+    } catch (error) {
+      console.error(`Error setting up realtime subscription for ${table}:`, error);
+    }
     
     return [channelId];
   }
@@ -58,9 +60,16 @@ class RealtimeService {
     callback: SubscriptionCallback
   ): string[] {
     const ids: string[] = [];
-    tables.forEach(table => {
-      ids.push(...this.subscribeToTable(table, event, callback));
-    });
+    
+    try {
+      tables.forEach(table => {
+        const tableIds = this.subscribeToTable(table, event, callback);
+        ids.push(...tableIds);
+      });
+    } catch (error) {
+      console.error("Error subscribing to tables:", error);
+    }
+    
     return ids;
   }
   
@@ -69,9 +78,13 @@ class RealtimeService {
    */
   unsubscribe(channelId: string): void {
     if (this.channels[channelId]) {
-      console.log(`Unsubscribing from channel: ${channelId}`);
-      supabase.removeChannel(this.channels[channelId]);
-      delete this.channels[channelId];
+      try {
+        console.log(`Unsubscribing from channel: ${channelId}`);
+        supabase.removeChannel(this.channels[channelId]);
+        delete this.channels[channelId];
+      } catch (error) {
+        console.error(`Error unsubscribing from channel ${channelId}:`, error);
+      }
     }
   }
   

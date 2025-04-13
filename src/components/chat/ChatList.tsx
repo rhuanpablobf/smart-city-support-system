@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useChat } from '@/contexts/chat';
 import { useToast } from '@/components/ui/use-toast';
-import { fetchAgentConversations, acceptWaitingConversation } from '@/services/agent';
+import { fetchAgentConversations } from '@/services/agent';
 import { useConversationSearch } from '@/hooks/useConversationSearch';
 import SearchInput from './list/SearchInput';
 import ConversationTabs from './list/ConversationTabs';
@@ -28,11 +28,12 @@ const ChatList = () => {
     conversations.bot || []
   );
 
-  // Load conversations only once on component mount
+  // Load conversations manually with a button click
   const loadConversations = useCallback(async () => {
     try {
       if (!currentUser?.id) {
         console.log("Não foi possível carregar conversas: Usuário não autenticado");
+        setLoadError("Usuário não autenticado");
         return;
       }
       
@@ -66,11 +67,14 @@ const ChatList = () => {
   }, [toast, setConversations, currentUser]);
 
   useEffect(() => {
-    // Load conversations once authenticated
-    if (currentUser?.id) {
-      loadConversations();
-    }
-  }, [loadConversations, currentUser]);
+    // We don't do the initial load here anymore, as ChatProvider handles it
+    // We just set loading to false after a short delay to avoid showing loading state unnecessarily
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   // Accept a waiting conversation
   const handleAcceptWaiting = async (conversationId: string) => {
@@ -145,5 +149,8 @@ const ChatList = () => {
     </div>
   );
 };
+
+// Import here to avoid circular dependency
+import { acceptWaitingConversation } from '@/services/agent';
 
 export default ChatList;
