@@ -24,10 +24,10 @@ class RealtimeService {
       // Create the channel with the correct syntax for Supabase v2
       const channel = supabase.channel(channelId);
       
-      // Subscribe to postgres changes with the correct API syntax
+      // Subscribe to postgres changes with the correct API syntax and type casting
       channel
         .on(
-          'postgres_changes', // This is correct in Supabase v2, the error is related to TypeScript types
+          'postgres_changes' as any, // Use type casting to avoid TypeScript error
           { 
             event, 
             schema: 'public',
