@@ -18,14 +18,10 @@ class RealtimeService {
   ): string {
     const channelId = `${table}-${event}-${Date.now()}`;
     
-    // Create the channel with correct config for Postgres changes
-    const channel = supabase.channel(channelId, {
-      config: {
-        postgres_changes: {}
-      }
-    });
+    // Create the channel with the correct syntax for Supabase v2
+    const channel = supabase.channel(channelId);
     
-    // Configure the listener for Postgres changes
+    // Configure the listener for Postgres changes with the proper syntax
     channel.on(
       'postgres_changes',
       {
