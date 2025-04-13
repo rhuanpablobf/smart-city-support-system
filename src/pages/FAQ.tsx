@@ -27,7 +27,7 @@ const FAQ = () => {
     categories,
     selectedCategory,
     handleCategoryChange
-  } = useFAQData(null, conversationId);
+  } = useFAQData(conversationId);
   
   const { transferLoading, transferToAgent } = useAgentTransfer(conversationId);
 

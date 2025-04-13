@@ -1,229 +1,172 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, Paperclip, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { ChatMessage } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
 import { realtimeService } from '@/services/realtime/realtimeService';
 
 interface ActiveChatStateProps {
-  conversation: any;
+  conversationId: string;
 }
 
-const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversation }) => {
+const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [messageText, setMessageText] = useState('');
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const [subscriptionIds, setSubscriptionIds] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Load initial messages
-  useEffect(() => {
-    const fetchMessages = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('conversation_id', conversation.id)
-          .order('timestamp', { ascending: true });
-          
-        if (error) throw error;
-        
-        // Convert sender_type to type for each message to match ChatMessage interface
-        const formattedMessages: ChatMessage[] = (data || []).map(message => ({
-          ...message,
-          type: message.sender_type // Map sender_type to type
-        }));
-        
-        setMessages(formattedMessages);
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-        toast({
-          title: "Erro ao carregar mensagens",
-          description: "Não foi possível carregar as mensagens anteriores.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (conversation?.id) {
-      fetchMessages();
-    }
-  }, [conversation?.id, toast]);
-
-  // Setup real-time updates
-  useEffect(() => {
-    if (!conversation?.id) return;
-
-    const ids = realtimeService.subscribeToTable(
-      'messages', 
-      'INSERT', 
-      (payload) => {
-        if (payload.new && payload.new.conversation_id === conversation.id) {
-          // Convert sender_type to type for new messages
-          const newMessage = {
-            ...payload.new,
-            type: payload.new.sender_type
-          } as ChatMessage;
-          
-          setMessages(prevMessages => [...prevMessages, newMessage]);
-        }
-      }
-    );
-
-    setSubscriptionIds(ids ? [ids] : []);
-
-    return () => {
-      if (subscriptionIds.length > 0) {
-        realtimeService.unsubscribeAll(subscriptionIds);
-      }
-    };
-  }, [conversation?.id]);
-
-  // Auto scroll to bottom when new message arrives
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
+  // Função para rolar automaticamente para a mensagem mais recente
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageText.trim() || !conversation?.id) return;
+  // Carregar mensagens iniciais
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', conversationId)
+          .order('timestamp', { ascending: true });
 
+        if (error) throw error;
+        
+        // Mapear os dados da API para o formato ChatMessage
+        const formattedMessages: ChatMessage[] = data.map(msg => ({
+          id: msg.id,
+          content: msg.content,
+          type: msg.sender_type, // Converter sender_type para type 
+          sender_id: msg.sender_id,
+          timestamp: msg.timestamp,
+          conversation_id: msg.conversation_id,
+          read: msg.read,
+        }));
+        
+        setMessages(formattedMessages);
+        setTimeout(scrollToBottom, 100);
+      } catch (error) {
+        console.error('Erro ao carregar mensagens:', error);
+      }
+    };
+
+    fetchMessages();
+
+    // Configurar inscrição em tempo real para novas mensagens
+    const channelIds = realtimeService.subscribeToTable('messages', 'INSERT', (payload) => {
+      if (payload.new && payload.new.conversation_id === conversationId) {
+        const newMsg: ChatMessage = {
+          id: payload.new.id,
+          content: payload.new.content,
+          type: payload.new.sender_type, // Converter sender_type para type
+          sender_id: payload.new.sender_id,
+          timestamp: payload.new.timestamp,
+          conversation_id: payload.new.conversation_id,
+          read: payload.new.read,
+        };
+        
+        setMessages(prev => [...prev, newMsg]);
+        setTimeout(scrollToBottom, 100);
+      }
+    });
+
+    return () => {
+      if (channelIds.length > 0) {
+        realtimeService.unsubscribeAll(channelIds);
+      }
+    };
+  }, [conversationId]);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+    
     setLoading(true);
     try {
-      // Send message to the database
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('messages')
-        .insert({
-          conversation_id: conversation.id,
-          content: messageText,
-          sender_id: conversation.id, // Using conversation id as user id for now
-          sender_type: 'user'
-        })
-        .select()
-        .single();
-        
+        .insert([
+          {
+            conversation_id: conversationId,
+            content: newMessage,
+            sender_type: 'user',
+            sender_id: 'client', // Poderia ser o ID do usuário se autenticado
+            timestamp: new Date().toISOString(),
+          }
+        ]);
+
       if (error) throw error;
       
-      // Clear input
-      setMessageText('');
+      setNewMessage('');
+      // O scroll acontecerá quando recebermos a mensagem via realtime 
     } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Erro ao enviar mensagem",
-        description: "Não foi possível enviar sua mensagem. Tente novamente.",
-        variant: "destructive"
-      });
+      console.error('Erro ao enviar mensagem:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('pt-BR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
 
   return (
-    <div className="w-full min-h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm p-4 flex items-center border-b">
-        <MessageCircle className="h-5 w-5 text-green-500 mr-3" />
-        <div>
-          <h2 className="font-medium text-gray-900">Atendimento em andamento</h2>
-          <p className="text-sm text-gray-500">
-            {conversation?.departments?.name} - {conversation?.services?.name}
-          </p>
-        </div>
-      </div>
-
-      {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {loading && messages.length === 0 ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-chatbot-primary" />
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">
-            <p>Nenhuma mensagem ainda. Inicie a conversa!</p>
-          </div>
-        ) : (
+    <div className="flex flex-col h-full bg-chatbot-bg">
+      {/* Área de mensagens */}
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-3"
+      >
+        {messages.length > 0 ? (
           messages.map((message) => (
-            <div 
-              key={message.id} 
-              className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+            <div
+              key={message.id}
+              className={`max-w-[80%] ${
+                message.type === 'user'
+                  ? 'ml-auto bg-chatbot-message-sent rounded-t-lg rounded-bl-lg'
+                  : 'mr-auto bg-chatbot-message-received rounded-t-lg rounded-br-lg'
+              } p-3 shadow-sm`}
             >
-              <div 
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.type === 'user' 
-                    ? 'bg-blue-100 text-gray-800' 
-                    : message.type === 'bot' 
-                    ? 'bg-gray-100 text-gray-800'
-                    : 'bg-green-100 text-gray-800'
-                }`}
-              >
-                <div className="text-sm">{message.content}</div>
-                <div className="text-xs mt-1 opacity-70">
-                  {formatTimestamp(message.timestamp)}
-                </div>
-              </div>
+              <p className="text-sm">{message.content}</p>
+              <p className="text-xs text-gray-500 mt-1 text-right">
+                {new Date(message.timestamp).toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
             </div>
           ))
+        ) : (
+          <div className="text-center text-gray-500 my-8">
+            Inicie a conversa enviando uma mensagem.
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Message Input */}
-      <div className="bg-white border-t p-3">
-        <form onSubmit={sendMessage} className="flex items-center space-x-2">
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-          />
-          <Button 
-            type="button" 
-            variant="ghost" 
-            size="icon"
-            disabled={loading}
-            onClick={handleFileUpload}
-            className="h-9 w-9"
-          >
-            <Paperclip className="h-5 w-5" />
-          </Button>
-          <Input
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            placeholder="Digite sua mensagem..."
-            disabled={loading}
-            className="flex-1 h-9"
-          />
-          <Button 
-            type="submit" 
-            size="icon" 
-            disabled={loading || !messageText.trim()}
-            className="bg-chatbot-primary hover:bg-chatbot-dark h-9 w-9"
-          >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-          </Button>
-        </form>
+      
+      {/* Entrada de mensagem */}
+      <div className="p-4 bg-white border-t flex items-end gap-2">
+        <Input
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Digite sua mensagem..."
+          className="flex-1 resize-none"
+          disabled={loading}
+        />
+        <Button 
+          size="icon" 
+          onClick={handleSendMessage} 
+          disabled={!newMessage.trim() || loading}
+          className="bg-chatbot-primary hover:bg-chatbot-dark"
+        >
+          <Send className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   );

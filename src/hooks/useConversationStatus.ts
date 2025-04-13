@@ -50,8 +50,8 @@ export const useConversationStatus = (conversationId: string | null) => {
       const subscriptionIds = realtimeService.subscribeToTable('conversations', 'UPDATE', async (payload) => {
         if (payload.new && payload.new.id === conversationId) {
           // Check if payload.old and payload.new both exist and have status property
-          const oldStatus = payload.old && 'status' in payload.old ? payload.old.status : null;
-          const newStatus = 'status' in payload.new ? payload.new.status : null;
+          const oldStatus = payload.old && payload.old.status ? payload.old.status : null;
+          const newStatus = payload.new.status ? payload.new.status : null;
           
           // Se o status mudou para 'active', recarregar a página para mostrar o chat
           if (newStatus === 'active' && oldStatus === 'waiting') {
