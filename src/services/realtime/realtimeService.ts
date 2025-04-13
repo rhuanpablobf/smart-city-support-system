@@ -15,7 +15,7 @@ class RealtimeService {
     table: string, 
     event: EventType = '*', 
     callback: SubscriptionCallback
-  ): string {
+  ): string[] {
     const channelId = `${table}-${event}-${Date.now()}`;
     
     // Create the channel with the correct syntax for Supabase v2
@@ -41,7 +41,7 @@ class RealtimeService {
     // Store the channel reference for future management
     this.channels[channelId] = channel;
     
-    return channelId;
+    return [channelId];
   }
   
   /**
@@ -52,7 +52,11 @@ class RealtimeService {
     event: EventType = '*',
     callback: SubscriptionCallback
   ): string[] {
-    return tables.map(table => this.subscribeToTable(table, event, callback));
+    const ids: string[] = [];
+    tables.forEach(table => {
+      ids.push(...this.subscribeToTable(table, event, callback));
+    });
+    return ids;
   }
   
   /**

@@ -49,7 +49,7 @@ export const fetchAgentConversations = async (agentId?: string) => {
       throw activeError;
     }
     
-    // Buscar conversas em espera - não mais filtrar por agente_id aqui pois todas são elegíveis
+    // Buscar todas as conversas em espera, independentemente do agente
     const { data: waitingConversations, error: waitingError } = await supabase
       .from('conversations')
       .select(`
