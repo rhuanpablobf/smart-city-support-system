@@ -68,6 +68,10 @@ export const fetchUserProfile = async (userId: string): Promise<User | null> => 
         avatar: profileData.avatar || '',
         status: (profileData.status || 'active') as 'active' | 'inactive',
         department_id: profileData.department_id,
+        department: profileData.department_id ? {
+          id: profileData.department_id,
+          name: '' // We don't have the department name in this fallback
+        } : null,
         maxSimultaneousChats: profileData.max_simultaneous_chats || 5,
         serviceIds: [] // We don't have service IDs in the fallback
       };
