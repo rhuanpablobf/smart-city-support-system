@@ -2,7 +2,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from "@/components/ui/use-toast";
 import { AuthContextType, ROLE_HIERARCHY } from './types';
+import { useAuthService } from './useAuthService';
 
 // Create auth context
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -18,13 +20,13 @@ export const useAuth = () => {
 
 // Auth provider component
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const authService = useAuthService();
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Check active sessions
     const getSession = async () => {
-      setLoading(true);
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -34,7 +36,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error('Error checking authentication status:', error);
       } finally {
-        setLoading(false);
+        setSessionChecked(true);
       }
     };
     
@@ -43,12 +45,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Listen for auth changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state change event:", event);
         if (event === 'SIGNED_IN') {
           if (session?.user) {
             await fetchUserProfile(session.user.id);
           }
         } else if (event === 'SIGNED_OUT') {
-          setCurrentUser(null);
+          authService.setCurrentUser(null);
         }
       }
     );
@@ -60,14 +63,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   const fetchUserProfile = async (userId: string) => {
     try {
+      authService.setLoading(true);
+      // Buscar perfil do usuário usando RPC
       const { data, error } = await supabase
-        .from('profiles')
-        .select(`
-          id, name, email, avatar, role, status, max_simultaneous_chats,
-          department_id, departments:department_id(id, name)
-        `)
-        .eq('id', userId)
-        .single();
+        .rpc('get_all_profiles_safe')
+        .then(response => {
+          if (response.error) {
+            return { data: null, error: response.error };
+          }
+          const userProfile = response.data.find((profile: any) => profile.id === userId);
+          return { data: userProfile || null, error: null };
+        });
       
       if (error) {
         throw error;
@@ -85,53 +91,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           id: data.id,
           name: data.name || 'User',
           email: data.email || '',
-          role: data.role,
+          role: data.role as UserRole,
           avatar: data.avatar || '',
           status: (data.status || 'active') as 'active' | 'inactive',
-          department: data.departments,
+          department: data.departments ? {
+            id: data.department_id,
+            name: data.department_name
+          } : null,
           department_id: data.department_id,
           maxSimultaneousChats: data.max_simultaneous_chats || 5,
           serviceIds
         };
         
-        setCurrentUser(user);
+        authService.setCurrentUser(user);
+        console.log("Perfil do usuário carregado:", user);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching user profile:', error);
-    }
-  };
-  
-  const login = async (email: string, password: string): Promise<User | void> => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+      toast({
+        title: "Erro ao carregar perfil",
+        description: error.message || "Não foi possível carregar os dados do usuário",
+        variant: "destructive",
       });
-      
-      if (error) throw error;
-      
-      if (data.user) {
-        await fetchUserProfile(data.user.id);
-        return currentUser!; // Return user after login
-      }
-    } catch (error: any) {
-      console.error('Login error:', error.message);
-      throw error;
+    } finally {
+      authService.setLoading(false);
     }
   };
   
-  const logout = async (): Promise<void> => {
-    try {
-      await supabase.auth.signOut();
-      setCurrentUser(null);
-    } catch (error: any) {
-      console.error('Logout error:', error.message);
-    }
-  };
-
   const updateUser = async (userData: Partial<User>): Promise<User> => {
     try {
-      if (!currentUser) throw new Error("No user is currently logged in");
+      if (!authService.currentUser) throw new Error("No user is currently logged in");
 
       // Update the user profile in Supabase
       const { error } = await supabase
@@ -144,41 +133,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           max_simultaneous_chats: userData.maxSimultaneousChats,
           status: userData.status
         })
-        .eq('id', currentUser.id);
+        .eq('id', authService.currentUser.id);
 
       if (error) throw error;
 
       // Update local state
-      const updatedUser = { ...currentUser, ...userData };
-      setCurrentUser(updatedUser);
+      const updatedUser = { ...authService.currentUser, ...userData };
+      authService.setCurrentUser(updatedUser);
       
       return updatedUser;
     } catch (error: any) {
       console.error('Update user error:', error.message);
+      toast({
+        title: "Erro ao atualizar usuário",
+        description: error.message || "Não foi possível atualizar os dados do usuário",
+        variant: "destructive",
+      });
       throw error;
     }
   };
   
-  // Check if the user has a specific role or higher
-  const hasPermission = (requiredRole: UserRole): boolean => {
-    if (!currentUser) return false;
-    
-    const userRoleLevel = ROLE_HIERARCHY[currentUser.role] || 0;
-    const requiredRoleLevel = ROLE_HIERARCHY[requiredRole] || 0;
-    
-    return userRoleLevel >= requiredRoleLevel;
-  };
-  
-  const value = {
-    currentUser,
-    setCurrentUser,
-    loading,
-    login,
-    logout,
+  const value: AuthContextType = {
+    ...authService,
     updateUser,
-    isAuthenticated: !!currentUser,
-    userRole: currentUser?.role || null,
-    hasPermission
+    loading: authService.loading || !sessionChecked
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

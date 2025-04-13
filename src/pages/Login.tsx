@@ -13,7 +13,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, isAuthenticated, userRole } = useAuth();
+  const { login, isAuthenticated, userRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
@@ -22,9 +22,9 @@ const Login = () => {
 
   // Effect to handle redirection when already authenticated
   useEffect(() => {
-    console.log("Login page - isAuthenticated check:", isAuthenticated, "userRole:", userRole);
+    console.log("Login page - isAuthenticated check:", isAuthenticated, "userRole:", userRole, "authLoading:", authLoading);
     
-    if (isAuthenticated && userRole) {
+    if (isAuthenticated && userRole && !authLoading) {
       // Redirecionar baseado no papel do usuário
       let redirectPath = '/';
       
@@ -39,7 +39,7 @@ const Login = () => {
       console.log(`Usuário autenticado como ${userRole}, redirecionando para: ${redirectPath}`);
       navigate(redirectPath, { replace: true });
     }
-  }, [isAuthenticated, navigate, userRole]);
+  }, [isAuthenticated, navigate, userRole, authLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,11 +62,7 @@ const Login = () => {
       // Navigation will be handled by the useEffect hook that watches isAuthenticated
     } catch (error: any) {
       console.error('Login falhou:', error);
-      toast({
-        title: "Falha no login",
-        description: error?.message || "Credenciais inválidas. Por favor, tente novamente.",
-        variant: "destructive",
-      });
+      // O toast de erro já está sendo mostrado no método login
     } finally {
       setIsLoading(false);
     }
@@ -84,11 +80,7 @@ const Login = () => {
       // Navigation will be handled by the useEffect hook
     } catch (error: any) {
       console.error(`Login de demonstração falhou para ${demoType}:`, error);
-      toast({
-        title: "Falha no login de demonstração",
-        description: error?.message || `Não foi possível entrar como ${demoType}.`,
-        variant: "destructive",
-      });
+      // O toast de erro já está sendo mostrado no método login
     } finally {
       setIsLoading(false);
     }
@@ -120,7 +112,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -132,7 +124,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  disabled={isLoading}
+                  disabled={isLoading || authLoading}
                 />
               </div>
             </CardContent>
@@ -140,9 +132,9 @@ const Login = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-chatbot-primary hover:bg-chatbot-dark" 
-                disabled={isLoading}
+                disabled={isLoading || authLoading}
               >
-                {isLoading ? (
+                {isLoading || authLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Entrando...
@@ -157,7 +149,7 @@ const Login = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => loginWithDemoAccount('admin')}
-                    disabled={isLoading}
+                    disabled={isLoading || authLoading}
                     className="w-full"
                   >
                     Entrar como Admin
@@ -166,7 +158,7 @@ const Login = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => loginWithDemoAccount('manager')}
-                    disabled={isLoading}
+                    disabled={isLoading || authLoading}
                     className="w-full"
                   >
                     Entrar como Gerente
@@ -175,7 +167,7 @@ const Login = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => loginWithDemoAccount('agent')}
-                    disabled={isLoading}
+                    disabled={isLoading || authLoading}
                     className="w-full"
                   >
                     Entrar como Atendente

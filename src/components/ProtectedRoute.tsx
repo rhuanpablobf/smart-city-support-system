@@ -19,7 +19,8 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   
   useEffect(() => {
     console.log("ProtectedRoute - currentUser:", currentUser);
-  }, [currentUser]);
+    console.log("ProtectedRoute - loading:", loading, "isAuthenticated:", isAuthenticated);
+  }, [currentUser, loading, isAuthenticated]);
   
   // Add safety timeout to prevent infinite loading
   useEffect(() => {
@@ -38,7 +39,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         });
         // Force logout to reset the authentication state
         logout().catch(console.error);
-      }, 5000); // 5 segundos
+      }, 8000); // 8 segundos
     }
 
     return () => {

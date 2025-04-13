@@ -7,7 +7,7 @@ import { ROLE_HIERARCHY } from './types';
 
 export function useAuthService() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
 
   const login = async (email: string, password: string) => {
@@ -45,6 +45,7 @@ export function useAuthService() {
       
       if (profileError) {
         console.error("Erro ao buscar perfil:", profileError);
+        throw profileError;
       }
       
       // Determinar o papel do usuário utilizando primeiro o email para contas de demonstração
