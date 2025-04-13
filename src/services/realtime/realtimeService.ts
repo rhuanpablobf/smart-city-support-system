@@ -1,16 +1,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 // Define a more accurate type for the payload based on what Supabase actually returns
-type PostgresChangesPayload = {
-  schema: string;
-  table: string;
-  commit_timestamp: string;
-  eventType: string;
-  new: Record<string, any> | null;
-  old: Record<string, any> | null;
-};
+type PostgresChangesPayload = RealtimePostgresChangesPayload<{
+  [key: string]: any;
+}>;
 
 type SubscriptionCallback = (payload: PostgresChangesPayload) => void;
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -35,17 +30,19 @@ class RealtimeService {
       const channel = supabase.channel(channelId);
       
       // Subscribe to postgres changes with the correct API syntax
+      // We need to use "as any" here because the TypeScript definitions for Supabase
+      // don't perfectly match the actual API capabilities for realtime subscriptions
       channel
         .on(
-          'postgres_changes',
+          'postgres_changes' as any,
           { 
             event, 
             schema: 'public',
             table
           },
-          (payload) => {
+          (payload: PostgresChangesPayload) => {
             console.log(`Realtime update for ${table} (${event}):`, payload.eventType);
-            callback(payload as PostgresChangesPayload);
+            callback(payload);
           }
         )
         .subscribe((status) => {
