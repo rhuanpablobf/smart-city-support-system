@@ -18,6 +18,8 @@ class RealtimeService {
   ): string[] {
     const channelId = `${table}-${event}-${Date.now()}`;
     
+    console.log(`Setting up realtime subscription for ${table} (${event})`);
+    
     // Create the channel with the correct syntax for Supabase v2
     const channel = supabase.channel(channelId);
     
@@ -32,7 +34,10 @@ class RealtimeService {
           schema: 'public',
           table
         },
-        callback
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log(`Realtime update for ${table} (${event}):`, payload.eventType);
+          callback(payload);
+        }
       )
       .subscribe((status: string) => {
         console.log(`Realtime subscription to ${table} (${event}): ${status}`);
@@ -64,6 +69,7 @@ class RealtimeService {
    */
   unsubscribe(channelId: string): void {
     if (this.channels[channelId]) {
+      console.log(`Unsubscribing from channel: ${channelId}`);
       supabase.removeChannel(this.channels[channelId]);
       delete this.channels[channelId];
     }

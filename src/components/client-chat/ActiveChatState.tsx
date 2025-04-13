@@ -74,11 +74,8 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
     });
 
     return () => {
-      if (subscriptionIds) {
-        // Ensure the returned value is handled correctly based on what realtimeService.subscribeToTable returns
-        // If it returns a single string, we need to put it in an array when unsubscribing
-        realtimeService.unsubscribeAll(Array.isArray(subscriptionIds) ? subscriptionIds : [subscriptionIds]);
-      }
+      // Garantir que estamos desinscrever corretamente
+      realtimeService.unsubscribeAll(subscriptionIds);
     };
   }, [conversationId]);
 

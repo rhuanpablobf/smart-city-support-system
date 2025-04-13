@@ -6,6 +6,7 @@ import { fetchAgentConversations, acceptWaitingConversation } from '@/services/a
 import { useConversationSearch } from '@/hooks/useConversationSearch';
 import SearchInput from './list/SearchInput';
 import ConversationTabs from './list/ConversationTabs';
+import { useAuth } from '@/contexts/auth';
 
 const ChatList = () => {
   const { 
@@ -18,6 +19,7 @@ const ChatList = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { currentUser } = useAuth();
 
   // Custom hook to handle conversation filtering
   const { searchTerm, setSearchTerm, filteredConversations } = useConversationSearch(
@@ -27,12 +29,16 @@ const ChatList = () => {
   );
 
   // Load conversations only once on component mount
-  // Real-time updates will be handled by ChatProvider
   const loadConversations = useCallback(async () => {
     try {
+      if (!currentUser?.id) {
+        console.log("Não foi possível carregar conversas: Usuário não autenticado");
+        return;
+      }
+      
       setLoading(true);
       setLoadError(null);
-      const data = await fetchAgentConversations();
+      const data = await fetchAgentConversations(currentUser.id);
       
       // Update chat context with loaded conversations
       setConversations({
@@ -57,13 +63,14 @@ const ChatList = () => {
     } finally {
       setLoading(false);
     }
-  }, [toast, setConversations]);
+  }, [toast, setConversations, currentUser]);
 
   useEffect(() => {
-    // Load conversations only once on mount
-    loadConversations();
-    // Polling removed - now using realtime updates via ChatProvider
-  }, [loadConversations]);
+    // Load conversations once authenticated
+    if (currentUser?.id) {
+      loadConversations();
+    }
+  }, [loadConversations, currentUser]);
 
   // Accept a waiting conversation
   const handleAcceptWaiting = async (conversationId: string) => {
@@ -80,7 +87,8 @@ const ChatList = () => {
         variant: "default"
       });
       
-      // No need to reload - realtime will handle that
+      // Recarregar conversas para refletir a mudança
+      await loadConversations();
     } catch (error) {
       console.error("Erro ao aceitar conversa:", error);
       toast({
@@ -97,6 +105,13 @@ const ChatList = () => {
   const handleRetryLoad = () => {
     loadConversations();
   };
+
+  // Exibir informações para depuração
+  console.log("ChatList render - Conversations:", {
+    active: conversations.active.length,
+    waiting: conversations.waiting.length, 
+    bot: conversations.bot.length
+  });
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-white">
