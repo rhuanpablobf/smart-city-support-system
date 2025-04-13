@@ -32,7 +32,7 @@ export const useAgentTransfer = (conversationId: string | null) => {
           conversation_id: conversationId,
           content: 'Cliente solicitou atendimento humano',
           sender_id: conversationId,
-          sender_type: 'bot',
+          sender_type: 'bot',  // Corrigido de 'system' para 'bot'
           timestamp: new Date().toISOString()
         });
         
