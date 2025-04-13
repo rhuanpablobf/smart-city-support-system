@@ -35,7 +35,7 @@ const StatsCardGrid: React.FC<StatsCardGridProps> = ({ stats }) => {
       
       <StatsCard 
         title="Atendimentos via Bot" 
-        value={stats.botAttendances.toLocaleString()} 
+        value={`${stats.botAttendances.toLocaleString()}`} 
         subValue={`${stats.botPercentage}% do total de atendimentos`} 
       />
     </div>

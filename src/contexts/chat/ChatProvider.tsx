@@ -22,7 +22,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     closeChat
   } = useChatActions();
 
-  // Load conversations from API
+  // Load conversations from API - only once on initial mount
   useEffect(() => {
     const loadConversations = async () => {
       try {
@@ -38,6 +38,8 @@ export function ChatProvider({ children }: ChatProviderProps) {
     };
 
     loadConversations();
+    // Not adding dependencies here to avoid reloading on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const value = {

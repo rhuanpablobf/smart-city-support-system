@@ -73,7 +73,8 @@ export const fetchAgentConversations = async (agentId?: string) => {
       throw waitingError;
     }
     
-    // Buscar conversas sendo atendidas pelo bot (limitando a 100 para evitar problemas de performance)
+    // Buscar conversas sendo atendidas pelo bot (limitando a 50 para melhorar performance)
+    // Apenas buscar as mais recentes para evitar problemas de desempenho
     const { data: botConversations, error: botError } = await supabase
       .from('conversations')
       .select(`
@@ -91,7 +92,7 @@ export const fetchAgentConversations = async (agentId?: string) => {
       `)
       .eq('status', 'bot')
       .order('last_message_at', { ascending: false })
-      .limit(100);
+      .limit(50);
       
     if (botError) {
       console.error("Erro ao buscar conversas atendidas pelo bot:", botError);

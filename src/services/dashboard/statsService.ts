@@ -8,6 +8,15 @@ import { applyCommonFilters } from './utils';
  */
 export const fetchDashboardStats = async (filters?: FilterOptions): Promise<DashboardStats> => {
   try {
+    // Primeiro, vamos buscar a contagem exata de conversações de bot
+    const { count: botCount, error: botCountError } = await supabase
+      .from('conversations')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'bot');
+    
+    if (botCountError) throw botCountError;
+    
+    // Agora, vamos aplicar os filtros para todas as conversas
     let query = supabase.from('conversations').select('*');
     
     query = applyCommonFilters(query, filters);
@@ -19,10 +28,8 @@ export const fetchDashboardStats = async (filters?: FilterOptions): Promise<Dash
     
     const totalAttendances = conversations?.length || 0;
     
-    // Get bot attendances
-    const botAttendances = conversations?.filter(
-      conv => conv.status === 'bot' || (conv.agent_id === null && conv.status === 'closed')
-    ).length || 0;
+    // Get bot attendances - usando a contagem exata obtida anteriormente
+    const botAttendances = botCount || 0;
     
     // Calculate bot percentage
     const botPercentage = totalAttendances > 0 ? Math.round((botAttendances / totalAttendances) * 100) : 0;

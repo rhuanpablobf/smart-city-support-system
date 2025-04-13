@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import ConversationList from './ConversationList';
@@ -16,7 +16,8 @@ interface ConversationTabsProps {
   isLoading: boolean;
 }
 
-const ConversationTabs = ({ 
+// Usando memo para evitar renderizações desnecessárias
+const ConversationTabs = memo(({ 
   activeConversations, 
   waitingConversations, 
   botConversations,
@@ -99,6 +100,9 @@ const ConversationTabs = ({
       </TabsContent>
     </Tabs>
   );
-};
+});
+
+// Definir displayName para o componente memo
+ConversationTabs.displayName = 'ConversationTabs';
 
 export default ConversationTabs;
