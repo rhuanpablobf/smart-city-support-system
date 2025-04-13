@@ -22,49 +22,72 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const authService = useAuthService();
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionError, setSessionError] = useState<Error | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check active sessions
-    const getSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session?.user) {
-          await fetchUserProfile(session.user.id);
-        }
-      } catch (error) {
-        console.error('Error checking authentication status:', error);
-      } finally {
-        setSessionChecked(true);
-      }
-    };
-    
-    getSession();
-    
-    // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    console.log("AuthProvider - Inicializando e verificando sessão");
+    let isMounted = true;
+
+    // First set up the auth state listener before checking for an existing session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state change event:", event);
-        if (event === 'SIGNED_IN') {
-          if (session?.user) {
+        console.log("AuthState change event:", event, "session exists:", !!session);
+
+        if (!isMounted) return;
+        
+        if (event === 'SIGNED_IN' && session?.user) {
+          // We'll handle profile fetching separately to avoid deadlocks
+          setTimeout(async () => {
+            if (!isMounted) return;
             await fetchUserProfile(session.user.id);
-          }
+          }, 0);
         } else if (event === 'SIGNED_OUT') {
           authService.setCurrentUser(null);
         }
       }
     );
+
+    // Then check for an existing session
+    const getSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("Error getting session:", error);
+          setSessionError(error);
+          return;
+        }
+        
+        if (session?.user && isMounted) {
+          await fetchUserProfile(session.user.id);
+        }
+      } catch (error) {
+        console.error('Error checking authentication status:', error);
+        if (isMounted) {
+          setSessionError(error as Error);
+        }
+      } finally {
+        if (isMounted) {
+          setSessionChecked(true);
+        }
+      }
+    };
+    
+    getSession();
     
     return () => {
-      authListener.subscription.unsubscribe();
+      isMounted = false;
+      subscription.unsubscribe();
     };
   }, []);
   
   const fetchUserProfile = async (userId: string) => {
     try {
       authService.setLoading(true);
-      // Buscar perfil do usuário usando RPC
+      console.log("Fetching user profile for:", userId);
+      
+      // Fetch user profile using RPC
       const { data, error } = await supabase
         .rpc('get_all_profiles_safe')
         .then(response => {
@@ -104,7 +127,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         };
         
         authService.setCurrentUser(user);
-        console.log("Perfil do usuário carregado:", user);
+        console.log("User profile loaded:", user);
+      } else {
+        console.log("No user profile found for ID:", userId);
       }
     } catch (error: any) {
       console.error('Error fetching user profile:', error);

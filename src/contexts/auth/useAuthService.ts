@@ -32,7 +32,7 @@ export function useAuthService() {
       
       console.log("Login Supabase bem-sucedido, buscando perfil do usuário...");
       
-      // Buscar perfil do usuário após autenticação usando RPC
+      // Fetch user profile after authentication using RPC
       const { data: profileData, error: profileError } = await supabase
         .rpc('get_all_profiles_safe')
         .then(response => {
@@ -48,16 +48,16 @@ export function useAuthService() {
         throw profileError;
       }
       
-      // Determinar o papel do usuário utilizando primeiro o email para contas de demonstração
+      // Determine user role based on email for demo accounts
       let userRole: UserRole = 'user'; // default role
       
-      // Primeiro verificamos se é uma conta de demonstração pelo email
+      // First check if it's a demo account by email
       if (data.user.email) {
         userRole = determineUserRole(data.user.email);
         console.log("Papel inicial determinado pelo email:", userRole);
       }
       
-      // Se temos dados do perfil com uma função definida e não é uma conta de demonstração, use a função do perfil
+      // If we have profile data with a defined role and it's not a demo account, use the profile role
       if (profileData && profileData.role && !isDemoAccount(data.user.email)) {
         userRole = profileData.role as UserRole;
         console.log("Papel obtido do perfil:", userRole);
@@ -65,7 +65,7 @@ export function useAuthService() {
       
       console.log("Papel final determinado:", userRole);
       
-      // Criar objeto de usuário a partir dos metadados e dados do perfil
+      // Create user object from metadata and profile data
       const user: User = {
         id: data.user.id,
         name: profileData?.name || data.user.email?.split('@')[0] || '',

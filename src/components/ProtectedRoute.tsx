@@ -16,19 +16,18 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const location = useLocation();
   const { toast } = useToast();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
-  
-  useEffect(() => {
-    console.log("ProtectedRoute - currentUser:", currentUser);
-    console.log("ProtectedRoute - loading:", loading, "isAuthenticated:", isAuthenticated);
-  }, [currentUser, loading, isAuthenticated]);
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   
   // Add safety timeout to prevent infinite loading
   useEffect(() => {
-    // Set a timeout to prevent being stuck in the loading state
-    let timeoutId: NodeJS.Timeout;
+    // Clear any existing timeout when the loading state changes
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      setTimeoutId(null);
+    }
     
-    if (loading) {
-      timeoutId = setTimeout(() => {
+    if (loading && !loadingTimeout) {
+      const id = setTimeout(() => {
         console.log("Tempo limite de carregamento atingido, forçando navegação para login");
         setLoadingTimeout(true);
         // Show error message to the user
@@ -40,12 +39,21 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         // Force logout to reset the authentication state
         logout().catch(console.error);
       }, 8000); // 8 segundos
+      
+      setTimeoutId(id);
     }
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [loading, toast, logout]);
+  }, [loading, toast, logout, loadingTimeout]);
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [timeoutId]);
 
   console.log("ProtectedRoute - loading:", loading, "isAuthenticated:", isAuthenticated, "loadingTimeout:", loadingTimeout);
   

@@ -12,7 +12,7 @@ import { Loader2 } from 'lucide-react';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, isAuthenticated, userRole, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,6 +44,8 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isSubmitting) return; // Prevent multiple submissions
+    
     if (!email || !password) {
       toast({
         title: "Campos obrigatórios",
@@ -53,7 +55,7 @@ const Login = () => {
       return;
     }
     
-    setIsLoading(true);
+    setIsSubmitting(true);
     
     try {
       console.log("Iniciando processo de login para:", email);
@@ -62,14 +64,16 @@ const Login = () => {
       // Navigation will be handled by the useEffect hook that watches isAuthenticated
     } catch (error: any) {
       console.error('Login falhou:', error);
-      // O toast de erro já está sendo mostrado no método login
+      // Toast error is already shown in the login method
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const loginWithDemoAccount = async (demoType: 'admin' | 'manager' | 'agent') => {
-    setIsLoading(true);
+    if (isSubmitting || authLoading) return;
+    
+    setIsSubmitting(true);
     const demoEmail = `${demoType}@example.com`;
     const demoPassword = 'password123';
     
@@ -80,11 +84,14 @@ const Login = () => {
       // Navigation will be handled by the useEffect hook
     } catch (error: any) {
       console.error(`Login de demonstração falhou para ${demoType}:`, error);
-      // O toast de erro já está sendo mostrado no método login
+      // Toast error is already shown in the login method
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
+
+  // Use separate state for UI loading to prevent form fields from being disabled when authLoading is true
+  const isLoading = isSubmitting || authLoading;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -112,7 +119,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  disabled={isLoading || authLoading}
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="space-y-2">
@@ -124,7 +131,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  disabled={isLoading || authLoading}
+                  disabled={isSubmitting}
                 />
               </div>
             </CardContent>
@@ -132,9 +139,9 @@ const Login = () => {
               <Button 
                 type="submit" 
                 className="w-full bg-chatbot-primary hover:bg-chatbot-dark" 
-                disabled={isLoading || authLoading}
+                disabled={isLoading}
               >
-                {isLoading || authLoading ? (
+                {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Entrando...
@@ -149,7 +156,7 @@ const Login = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => loginWithDemoAccount('admin')}
-                    disabled={isLoading || authLoading}
+                    disabled={isLoading}
                     className="w-full"
                   >
                     Entrar como Admin
@@ -158,7 +165,7 @@ const Login = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => loginWithDemoAccount('manager')}
-                    disabled={isLoading || authLoading}
+                    disabled={isLoading}
                     className="w-full"
                   >
                     Entrar como Gerente
@@ -167,7 +174,7 @@ const Login = () => {
                     type="button" 
                     variant="outline" 
                     onClick={() => loginWithDemoAccount('agent')}
-                    disabled={isLoading || authLoading}
+                    disabled={isLoading}
                     className="w-full"
                   >
                     Entrar como Atendente
