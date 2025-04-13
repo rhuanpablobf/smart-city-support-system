@@ -55,7 +55,9 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     };
   }, [timeoutId]);
 
-  console.log("ProtectedRoute - loading:", loading, "isAuthenticated:", isAuthenticated, "loadingTimeout:", loadingTimeout);
+  console.log("ProtectedRoute - loading:", loading, "isAuthenticated:", isAuthenticated, 
+    "loadingTimeout:", loadingTimeout, "requiredRole:", requiredRole, 
+    "currentUser:", currentUser ? `${currentUser.name} (${currentUser.role})` : "none");
   
   if (loading && !loadingTimeout) {
     // Mostrar um spinner de carregamento enquanto verifica a autenticação
@@ -76,10 +78,15 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && !hasPermission(requiredRole)) {
-    // Redirecionar para página não autorizada se o usuário não tiver a função necessária
-    console.log("Usuário não possui o papel necessário:", requiredRole, "papel atual:", currentUser?.role);
-    return <Navigate to="/unauthorized" replace />;
+  // Verificar permissões apenas se for necessário um papel específico
+  if (requiredRole) {
+    console.log(`Verificando se usuário tem permissão de ${requiredRole}, papel atual: ${currentUser?.role}`);
+    
+    if (!hasPermission(requiredRole)) {
+      // Redirecionar para página não autorizada se o usuário não tiver a função necessária
+      console.log("Usuário não possui o papel necessário:", requiredRole, "papel atual:", currentUser?.role);
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   // Usuário está autenticado e tem a função necessária

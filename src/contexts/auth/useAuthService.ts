@@ -14,6 +14,7 @@ export function useAuthService() {
     setLoading(true);
     try {
       console.log("Iniciando login com Supabase...");
+      
       // Sign in with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -39,7 +40,7 @@ export function useAuthService() {
           if (response.error) {
             return { data: null, error: response.error };
           }
-          const userProfile = response.data.find((profile: any) => profile.id === data.user?.id);
+          const userProfile = response.data?.find((profile: any) => profile.id === data.user?.id);
           return { data: userProfile || null, error: null };
         });
       
@@ -51,16 +52,16 @@ export function useAuthService() {
       // Determine user role based on email for demo accounts
       let userRole: UserRole = 'user'; // default role
       
-      // First check if it's a demo account by email
+      // Check if it's a demo account by email
       if (data.user.email) {
-        userRole = determineUserRole(data.user.email);
-        console.log("Papel inicial determinado pelo email:", userRole);
-      }
-      
-      // If we have profile data with a defined role and it's not a demo account, use the profile role
-      if (profileData && profileData.role && !isDemoAccount(data.user.email)) {
-        userRole = profileData.role as UserRole;
-        console.log("Papel obtido do perfil:", userRole);
+        if (isDemoAccount(data.user.email)) {
+          userRole = determineUserRole(data.user.email);
+          console.log("Papel determinado pelo email (demo account):", userRole);
+        } else if (profileData?.role) {
+          // Use profile role for non-demo accounts
+          userRole = profileData.role as UserRole;
+          console.log("Papel obtido do perfil:", userRole);
+        }
       }
       
       console.log("Papel final determinado:", userRole);
@@ -72,7 +73,10 @@ export function useAuthService() {
         email: data.user.email || '',
         role: userRole,
         avatar: profileData?.avatar || '',
-        department: null,
+        department: profileData?.department_id ? {
+          id: profileData.department_id,
+          name: profileData?.department_name || ''
+        } : null,
         department_id: profileData?.department_id || null,
         status: profileData?.status as 'active' | 'inactive' || 'active',
         maxSimultaneousChats: profileData?.max_simultaneous_chats || 5

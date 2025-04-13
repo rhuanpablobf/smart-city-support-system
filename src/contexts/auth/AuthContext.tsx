@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, UserRole } from '@/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
-import { AuthContextType, ROLE_HIERARCHY } from './types';
+import { AuthContextType } from './types';
 import { useAuthService } from './useAuthService';
 
 // Create auth context
@@ -31,7 +31,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // First set up the auth state listener before checking for an existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log("AuthState change event:", event, "session exists:", !!session);
 
         if (!isMounted) return;
@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             await fetchUserProfile(session.user.id);
           }, 0);
         } else if (event === 'SIGNED_OUT') {
+          console.log("Usuário desconectado, limpando estado");
           authService.setCurrentUser(null);
         }
       }
@@ -60,7 +61,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         
         if (session?.user && isMounted) {
+          console.log("Sessão existente encontrada, buscando perfil do usuário");
           await fetchUserProfile(session.user.id);
+        } else {
+          console.log("Nenhuma sessão encontrada ou componente desmontado");
         }
       } catch (error) {
         console.error('Error checking authentication status:', error);
@@ -94,7 +98,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (response.error) {
             return { data: null, error: response.error };
           }
-          const userProfile = response.data.find((profile: any) => profile.id === userId);
+          const userProfile = response.data?.find((profile: any) => profile.id === userId);
           return { data: userProfile || null, error: null };
         });
       
@@ -103,6 +107,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       
       if (data) {
+        // Determine user role based on email if it's a demo account
+        const email = data.email || '';
+        let role = data.role as UserRole;
+        
+        // Override role for demo accounts
+        if (email.endsWith('@example.com')) {
+          if (email === 'admin@example.com') role = 'admin';
+          else if (email === 'manager@example.com') role = 'manager';
+          else if (email === 'agent@example.com') role = 'agent';
+        }
+        
+        console.log("Papel determinado:", role);
+        
         const serviceIdsResponse = await supabase
           .from('agent_services')
           .select('service_id')
@@ -114,7 +131,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           id: data.id,
           name: data.name || 'User',
           email: data.email || '',
-          role: data.role as UserRole,
+          role: role,
           avatar: data.avatar || '',
           status: (data.status || 'active') as 'active' | 'inactive',
           department: data.departments ? {
