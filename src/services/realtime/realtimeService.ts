@@ -1,8 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-type SubscriptionCallback = (payload: any) => void;
+type SubscriptionCallback = (payload: RealtimePostgresChangesPayload<any>) => void;
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
 class RealtimeService {
@@ -18,14 +18,15 @@ class RealtimeService {
   ): string {
     const channelId = `${table}-${event}-${Date.now()}`;
     
+    // Create channel with unique ID based on table and event type
     this.channels[channelId] = supabase
-      .channel(`public:${table}`)
+      .channel(channelId)
       .on(
         'postgres_changes',
-        { 
+        {
           event: event, 
           schema: 'public', 
-          table: table 
+          table: table
         },
         (payload) => {
           console.log(`Realtime ${event} event on ${table}:`, payload);
