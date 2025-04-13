@@ -85,11 +85,7 @@ export const useAgentDashboard = () => {
         // Atualizar estatísticas somente quando necessário
         if (
           (payload.table === 'conversations') ||
-          (payload.new && 
-           typeof payload.new === 'object' && 
-           'id' in payload.new && 
-           currentUser?.id && 
-           payload.new.id === currentUser.id)
+          (payload.table === 'agent_statuses' && payload.new?.id === currentUser?.id)
         ) {
           console.log('Atualização realtime para estatísticas do dashboard');
           await refreshStats();
@@ -135,5 +131,3 @@ export const useAgentDashboard = () => {
     refreshStats,
   };
 };
-
-export default useAgentDashboard;

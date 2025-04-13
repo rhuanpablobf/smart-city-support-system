@@ -2,15 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-// Define a more accurate type for the payload based on what Supabase actually returns
-type PostgresChangesPayload = RealtimePostgresChangesPayload<{
-  [key: string]: any;
-}> & {
-  // Add a fallback eventType field to ensure compatibility
-  eventType?: string;
-};
-
-type SubscriptionCallback = (payload: PostgresChangesPayload) => void;
+type SubscriptionCallback = (payload: RealtimePostgresChangesPayload<any>) => void;
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
 class RealtimeService {
@@ -26,45 +18,28 @@ class RealtimeService {
   ): string[] {
     const channelId = `${table}-${event}-${Date.now()}`;
     
-    console.log(`Setting up realtime subscription for ${table} (${event})`);
+    // Create the channel with the correct syntax for Supabase v2
+    const channel = supabase.channel(channelId);
     
-    try {
-      // Create the channel with the correct syntax for Supabase v2
-      const channel = supabase.channel(channelId);
-      
-      // Subscribe to postgres changes with the correct API syntax
-      // We need to use "as any" here because the TypeScript definitions for Supabase
-      // don't perfectly match the actual API capabilities for realtime subscriptions
-      channel
-        .on(
-          'postgres_changes' as any,
-          { 
-            event, 
-            schema: 'public',
-            table
-          },
-          (payload: any) => {
-            console.log(`Realtime update for ${table} (${event}):`, payload.eventType || event);
-            
-            // Convert the payload to our expected format
-            const processedPayload: PostgresChangesPayload = {
-              ...payload,
-              eventType: payload.eventType || event,
-              table
-            };
-            
-            callback(processedPayload);
-          }
-        )
-        .subscribe((status) => {
-          console.log(`Realtime subscription to ${table} (${event}): ${status}`);
-        });
-      
-      // Store the channel reference for future management
-      this.channels[channelId] = channel;
-    } catch (error) {
-      console.error(`Error setting up realtime subscription for ${table}:`, error);
-    }
+    // Use type assertion to fix the TypeScript error with postgres_changes
+    // This is necessary because the TypeScript definitions in supabase-js don't fully
+    // capture the runtime behavior of the Realtime API
+    (channel as any)
+      .on(
+        'postgres_changes',
+        {
+          event, 
+          schema: 'public',
+          table
+        },
+        callback
+      )
+      .subscribe((status: string) => {
+        console.log(`Realtime subscription to ${table} (${event}): ${status}`);
+      });
+    
+    // Store the channel reference for future management
+    this.channels[channelId] = channel;
     
     return [channelId];
   }
@@ -78,16 +53,9 @@ class RealtimeService {
     callback: SubscriptionCallback
   ): string[] {
     const ids: string[] = [];
-    
-    try {
-      tables.forEach(table => {
-        const tableIds = this.subscribeToTable(table, event, callback);
-        ids.push(...tableIds);
-      });
-    } catch (error) {
-      console.error("Error subscribing to tables:", error);
-    }
-    
+    tables.forEach(table => {
+      ids.push(...this.subscribeToTable(table, event, callback));
+    });
     return ids;
   }
   
@@ -96,13 +64,8 @@ class RealtimeService {
    */
   unsubscribe(channelId: string): void {
     if (this.channels[channelId]) {
-      try {
-        console.log(`Unsubscribing from channel: ${channelId}`);
-        supabase.removeChannel(this.channels[channelId]);
-        delete this.channels[channelId];
-      } catch (error) {
-        console.error(`Error unsubscribing from channel ${channelId}:`, error);
-      }
+      supabase.removeChannel(this.channels[channelId]);
+      delete this.channels[channelId];
     }
   }
   
