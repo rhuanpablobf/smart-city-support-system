@@ -56,7 +56,8 @@ export const createDemoUsers = async () => {
             id: data.user.id,
             name: user.name,
             email: user.email,
-            role: user.role,
+            // Cast role as string to match the database enum type
+            role: user.role as string,
             status: 'active',
             max_simultaneous_chats: 5
           });

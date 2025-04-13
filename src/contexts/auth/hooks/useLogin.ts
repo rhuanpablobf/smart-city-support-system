@@ -8,7 +8,7 @@ export function useLogin() {
   const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     setLoading(true);
     try {
       console.log("Iniciando login com Supabase...");
@@ -36,7 +36,8 @@ export function useLogin() {
         description: `Bem-vindo de volta!`,
       });
       
-      return data.user;
+      // Return null instead of user since the user profile will be loaded separately
+      return null;
     } catch (error: any) {
       console.error("Login falhou com erro:", error);
       toast({

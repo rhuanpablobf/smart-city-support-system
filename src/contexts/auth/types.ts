@@ -3,9 +3,9 @@ import { User, UserRole } from '@/types';
 
 export interface AuthContextType {
   currentUser: User | null;
-  setCurrentUser: (user: User) => void;
+  setCurrentUser: (user: User | null) => void;
   loading: boolean;
-  login: (email: string, password: string) => Promise<User | void>;
+  login: (email: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   updateUser?: (userData: Partial<User>) => Promise<User>;
   isAuthenticated: boolean;
