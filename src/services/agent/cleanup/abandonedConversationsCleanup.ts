@@ -59,14 +59,15 @@ export const cleanupAbandonedConversations = async () => {
         console.log(`Marked ${abandonedIds.length} conversations as abandoned`);
       }
       
-      // Add system message to each abandoned conversation
+      // Add system message to each abandoned conversation, but use "bot" as sender_type 
+      // since "system" is not an allowed value in the database schema
       for (const convId of abandonedIds) {
         await supabase
           .from('messages')
           .insert({
             conversation_id: convId,
             content: 'Atendimento abandonado por inatividade.',
-            sender_type: 'system',
+            sender_type: 'bot', // Changed from 'system' to 'bot'
             sender_id: '00000000-0000-0000-0000-000000000000', // System message
             timestamp: new Date().toISOString()
           });
