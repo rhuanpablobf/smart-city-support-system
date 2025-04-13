@@ -1,130 +1,71 @@
 
-import { supabase } from '@/integrations/supabase/client';
+// This file would contain code to create demo users
+// with different roles during development mode
+import { supabase } from '../integrations/supabase/client';
 
 export const createDemoUsers = async () => {
-  // Check if users already exist to avoid duplicates
-  const { data: existingUsers } = await supabase
-    .from('profiles')
-    .select('email')
-    .in('email', ['admin@example.com', 'manager@example.com', 'agent@example.com']);
+  if (process.env.NODE_ENV !== 'development') return;
 
-  if (existingUsers && existingUsers.length === 3) {
-    console.log('Demo users already exist');
-    return;
-  }
+  console.log('Creating demo users for development...');
 
-  // Check if demo departments already exist
-  const { data: existingDepts } = await supabase
-    .from('departments')
-    .select('name')
-    .in('name', ['Saúde', 'Educação']);
-  
-  // Create demo departments only if they don't exist
-  let healthDept, educationDept;
-  
-  if (!existingDepts || !existingDepts.some(dept => dept.name === 'Saúde')) {
-    const { data } = await supabase
-      .from('departments')
-      .insert({ name: 'Saúde', description: 'Secretaria de Saúde' })
-      .select()
-      .single();
-    healthDept = data;
-  } else {
-    const { data } = await supabase
-      .from('departments')
-      .select()
-      .eq('name', 'Saúde')
-      .single();
-    healthDept = data;
-  }
+  const demoUsers = [
+    { email: 'master@example.com', password: 'password123', role: 'master', name: 'Master Admin' },
+    { email: 'admin@example.com', password: 'password123', role: 'admin', name: 'Secretaria Admin' },
+    { email: 'manager@example.com', password: 'password123', role: 'manager', name: 'Gerente' },
+    { email: 'agent@example.com', password: 'password123', role: 'agent', name: 'Atendente' },
+  ];
 
-  if (!existingDepts || !existingDepts.some(dept => dept.name === 'Educação')) {
-    const { data } = await supabase
-      .from('departments')
-      .insert({ name: 'Educação', description: 'Secretaria de Educação' })
-      .select()
-      .single();
-    educationDept = data;
-  } else {
-    const { data } = await supabase
-      .from('departments')
-      .select()
-      .eq('name', 'Educação')
-      .single();
-    educationDept = data;
-  }
+  for (const user of demoUsers) {
+    try {
+      // Check if user already exists
+      const { data: existingUsers } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('email', user.email)
+        .limit(1);
 
-  // Create admin user
-  const { data: adminAuthUser, error: adminError } = await supabase.auth.signUp({
-    email: 'admin@example.com',
-    password: 'password123',
-    options: {
-      data: {
-        name: 'Admin User',
+      if (existingUsers && existingUsers.length > 0) {
+        console.log(`User ${user.email} already exists, skipping...`);
+        continue;
       }
-    }
-  });
 
-  if (adminError) {
-    console.error('Error creating admin user:', adminError);
-  } else if (adminAuthUser.user) {
-    await supabase
-      .from('profiles')
-      .update({ 
-        role: 'admin',
-        name: 'Admin User'
-      })
-      .eq('id', adminAuthUser.user.id);
-  }
+      // Create auth user
+      const { data, error } = await supabase.auth.signUp({
+        email: user.email,
+        password: user.password,
+        options: {
+          data: {
+            name: user.name,
+          }
+        }
+      });
 
-  // Create manager user
-  const { data: managerAuthUser, error: managerError } = await supabase.auth.signUp({
-    email: 'manager@example.com',
-    password: 'password123',
-    options: {
-      data: {
-        name: 'Manager User',
+      if (error) {
+        console.error(`Error creating demo user ${user.email}:`, error.message);
+        continue;
       }
-    }
-  });
 
-  if (managerError) {
-    console.error('Error creating manager user:', managerError);
-  } else if (managerAuthUser.user && healthDept) {
-    await supabase
-      .from('profiles')
-      .update({ 
-        role: 'manager',
-        name: 'Manager User',
-        department_id: healthDept.id
-      })
-      .eq('id', managerAuthUser.user.id);
-  }
+      console.log(`Created demo user: ${user.email} with role ${user.role}`);
 
-  // Create agent user
-  const { data: agentAuthUser, error: agentError } = await supabase.auth.signUp({
-    email: 'agent@example.com',
-    password: 'password123',
-    options: {
-      data: {
-        name: 'Agent User',
+      if (data.user) {
+        // Create or update profile with proper role
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            status: 'active',
+            max_simultaneous_chats: 5
+          });
+
+        if (profileError) {
+          console.error(`Error setting role for ${user.email}:`, profileError.message);
+        }
       }
+    } catch (err) {
+      console.error(`Unexpected error creating demo user ${user.email}:`, err);
     }
-  });
-
-  if (agentError) {
-    console.error('Error creating agent user:', agentError);
-  } else if (agentAuthUser.user && educationDept) {
-    await supabase
-      .from('profiles')
-      .update({ 
-        role: 'agent',
-        name: 'Agent User',
-        department_id: educationDept.id,
-        max_simultaneous_chats: 5
-      })
-      .eq('id', agentAuthUser.user.id);
   }
-
-  console.log('Demo users created successfully');
 };

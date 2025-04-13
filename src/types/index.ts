@@ -1,5 +1,4 @@
-
-export type UserRole = 'admin' | 'manager' | 'agent' | 'user';
+export type UserRole = 'master' | 'admin' | 'manager' | 'agent' | 'user';
 
 export interface User {
   id: string;
@@ -12,6 +11,8 @@ export interface User {
   status: 'active' | 'inactive';
   maxSimultaneousChats: number;
   serviceIds?: string[];
+  // Add secretary_id for the department-secretary relationship
+  secretary_id?: string | null;
 }
 
 export interface Department {

@@ -78,11 +78,32 @@ export function useAuthService() {
           name: profileData?.department_name || ''
         } : null,
         department_id: profileData?.department_id || null,
+        secretary_id: profileData?.secretary_id || null,
         status: profileData?.status as 'active' | 'inactive' || 'active',
         maxSimultaneousChats: profileData?.max_simultaneous_chats || 5
       };
       
       console.log("Definindo usuário atual:", user);
+      
+      // Set the default status for master users to offline
+      if (userRole === 'master' && user.id) {
+        try {
+          const { error: statusError } = await supabase
+            .from('agent_statuses')
+            .upsert({
+              id: user.id,
+              status: 'offline',
+              last_active_at: new Date().toISOString()
+            });
+            
+          if (statusError) {
+            console.error("Error setting master status to offline:", statusError);
+          }
+        } catch (statusError) {
+          console.error("Failed to set master status:", statusError);
+        }
+      }
+      
       setCurrentUser(user);
       
       toast({
@@ -115,11 +136,13 @@ export function useAuthService() {
     if (!email) return 'user';
     
     // Contas de demonstração com email específico
+    if (email === 'master@example.com') return 'master';
     if (email === 'admin@example.com') return 'admin';
     if (email === 'manager@example.com') return 'manager';
     if (email === 'agent@example.com') return 'agent';
     
     // Verificação genérica por substring
+    if (email.includes('master')) return 'master';
     if (email.includes('admin')) return 'admin';
     if (email.includes('manager')) return 'manager';
     if (email.includes('agent')) return 'agent';

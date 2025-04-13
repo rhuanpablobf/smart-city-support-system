@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import {
   Users,
   PieChart,
   HelpCircle,
-  LogOut
+  LogOut,
+  Building2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -39,6 +40,17 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
     });
     navigate('/login');
   };
+  
+  // Helper function to get role display name
+  const getRoleDisplayName = (role: string | null) => {
+    switch(role) {
+      case 'master': return 'Master Admin';
+      case 'admin': return 'Administrador';
+      case 'manager': return 'Gerente';
+      case 'agent': return 'Atendente';
+      default: return 'Usuário';
+    }
+  };
 
   return (
     <>
@@ -54,8 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               variant="outline" 
               className="bg-green-100 text-green-800 border-green-200"
             >
-              {userRole === 'admin' ? 'Administrador' : 
-               userRole === 'manager' ? 'Gerente' : 'Atendente'}
+              {getRoleDisplayName(userRole)}
             </Badge>
           </div>
           
@@ -67,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
               </Avatar>
               <div>
                 <p className="font-medium">{currentUser?.name}</p>
-                <p className="text-sm text-gray-500">{currentUser?.department || 'Departamento não definido'}</p>
+                <p className="text-sm text-gray-500">{currentUser?.department?.name || 'Departamento não definido'}</p>
               </div>
             </div>
           </div>
@@ -75,20 +86,68 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
           <Separator />
           
           <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {/* Menu items based on role */}
-            {(userRole === 'admin' || userRole === 'manager' || userRole === 'agent') && (
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => navigate('/agent')}
-              >
-                <MessageSquare className="mr-2 h-5 w-5" />
-                Atendimentos
-              </Button>
+            {/* Master sees everything */}
+            {userRole === 'master' && (
+              <>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/users')}
+                >
+                  <Users className="mr-2 h-5 w-5" />
+                  Usuários
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <BarChart className="mr-2 h-5 w-5" />
+                  Dashboard Geral
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/reports')}
+                >
+                  <PieChart className="mr-2 h-5 w-5" />
+                  Relatórios Gerais
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/agent')}
+                >
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  Atendimentos
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/secretary')}
+                >
+                  <Building2 className="mr-2 h-5 w-5" />
+                  Secretarias
+                </Button>
+              </>
             )}
 
-            {(userRole === 'admin' || userRole === 'manager') && (
+            {/* Secretary Admin can manage own departments and users */}
+            {userRole === 'admin' && (
               <>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/users')}
+                >
+                  <Users className="mr-2 h-5 w-5" />
+                  Usuários da Secretaria
+                </Button>
+                
                 <Button
                   variant="ghost"
                   className="w-full justify-start"
@@ -115,18 +174,80 @@ const Sidebar: React.FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen }) => {
                   <PieChart className="mr-2 h-5 w-5" />
                   Relatórios
                 </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/agent')}
+                >
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  Atendimentos
+                </Button>
               </>
             )}
 
-            {userRole === 'admin' && (
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => navigate('/users')}
-              >
-                <Users className="mr-2 h-5 w-5" />
-                Usuários
-              </Button>
+            {/* Manager can manage QA and agents in their department */}
+            {userRole === 'manager' && (
+              <>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/agent')}
+                >
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  Atendimentos
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <BarChart className="mr-2 h-5 w-5" />
+                  Dashboard Departamento
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/chatbot')}
+                >
+                  <HelpCircle className="mr-2 h-5 w-5" />
+                  Configurar Chatbot
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/users')}
+                >
+                  <Users className="mr-2 h-5 w-5" />
+                  Atendentes
+                </Button>
+              </>
+            )}
+
+            {/* Agent can only see their own attendances and stats */}
+            {userRole === 'agent' && (
+              <>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/agent')}
+                >
+                  <MessageSquare className="mr-2 h-5 w-5" />
+                  Atendimentos
+                </Button>
+                
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <BarChart className="mr-2 h-5 w-5" />
+                  Minhas Estatísticas
+                </Button>
+              </>
             )}
 
             <Button

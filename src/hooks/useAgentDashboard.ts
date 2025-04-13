@@ -1,7 +1,9 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { fetchAgentDashboardStats, AgentDashboardStats } from '@/services/agent';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 
 export const useAgentDashboard = () => {
   const [agentStatus, setAgentStatus] = useState<'online' | 'offline' | 'break'>('online');
@@ -17,6 +19,7 @@ export const useAgentDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { currentUser } = useAuth();
   
   // Function to refresh the stats
   const refreshStats = useCallback(async () => {
@@ -37,6 +40,35 @@ export const useAgentDashboard = () => {
       setLoading(false);
     }
   }, [toast]);
+
+  // Get the initial agent status when component mounts
+  useEffect(() => {
+    const fetchAgentStatus = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from('agent_statuses')
+            .select('status')
+            .eq('id', user.id)
+            .single();
+
+          if (error) throw error;
+          
+          // If the user is a master admin, they should start as offline by default
+          if (currentUser && currentUser.role === 'master') {
+            setAgentStatus('offline');
+          } else if (data) {
+            setAgentStatus(data.status as 'online' | 'offline' | 'break');
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching agent status:", error);
+      }
+    };
+
+    fetchAgentStatus();
+  }, [currentUser]);
   
   useEffect(() => {
     // Load stats on component mount

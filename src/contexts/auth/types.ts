@@ -18,6 +18,7 @@ export interface AuthProviderProps {
 }
 
 export const ROLE_HIERARCHY: { [key in UserRole]: number } = {
+  'master': 4,
   'admin': 3,
   'manager': 2,
   'agent': 1,

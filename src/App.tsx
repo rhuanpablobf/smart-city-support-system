@@ -67,7 +67,7 @@ const App = () => {
                   <Route
                     path="dashboard"
                     element={
-                      <ProtectedRoute requiredRole="manager">
+                      <ProtectedRoute requiredRole="agent">
                         <Dashboard />
                       </ProtectedRoute>
                     }
@@ -85,7 +85,7 @@ const App = () => {
                   <Route
                     path="users"
                     element={
-                      <ProtectedRoute requiredRole="admin">
+                      <ProtectedRoute requiredRole="manager">
                         <UsersManagement />
                       </ProtectedRoute>
                     }
@@ -94,7 +94,7 @@ const App = () => {
                   <Route
                     path="reports"
                     element={
-                      <ProtectedRoute requiredRole="manager">
+                      <ProtectedRoute requiredRole="admin">
                         <Reports />
                       </ProtectedRoute>
                     }

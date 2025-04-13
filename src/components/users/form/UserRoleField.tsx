@@ -17,19 +17,22 @@ export const UserRoleField: React.FC<UserRoleFieldProps> = ({
   onRoleChange
 }) => {
   const roleOptions = [
-    { value: 'admin', label: 'Administrador' },
+    { value: 'master', label: 'Master Administrador' },
+    { value: 'admin', label: 'Administrador de Secretaria' },
     { value: 'manager', label: 'Gerente' },
     { value: 'agent', label: 'Atendente' }
   ];
   
   // Filter role options based on current user role
   const getAvailableRoles = () => {
-    if (currentUserRole === 'admin') {
+    if (currentUserRole === 'master') {
       return roleOptions;
+    } else if (currentUserRole === 'admin') {
+      return roleOptions.filter(r => r.value !== 'master');
     } else if (currentUserRole === 'manager') {
       return roleOptions.filter(r => r.value === 'agent');
     }
-    return roleOptions;
+    return [];
   };
   
   return (
