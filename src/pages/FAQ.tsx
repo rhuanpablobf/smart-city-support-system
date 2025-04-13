@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { CircleHelp, ArrowRight, Loader2 } from 'lucide-react';
@@ -20,7 +20,9 @@ interface QAItem {
 
 const FAQ = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+  const [transferLoading, setTransferLoading] = useState(false);
   const [qaItems, setQaItems] = useState<QAItem[]>([]);
   const [serviceInfo, setServiceInfo] = useState<{ name: string; department: string } | null>(null);
   const { toast } = useToast();
@@ -85,9 +87,49 @@ const FAQ = () => {
     fetchConversationDetails();
   }, [conversationId, toast]);
 
-  const redirectToChat = () => {
-    if (conversationId) {
-      window.location.href = `/chat?conversation=${conversationId}`;
+  const transferToAgent = async () => {
+    if (!conversationId) return;
+    
+    setTransferLoading(true);
+    try {
+      // Atualizar o status da conversa para 'waiting' para um atendente a pegar
+      const { error } = await supabase
+        .from('conversations')
+        .update({ 
+          status: 'waiting',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId);
+        
+      if (error) throw error;
+      
+      // Adicionar uma mensagem de sistema indicando a transferência
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          content: 'Cliente solicitou atendimento humano',
+          type: 'system',
+          created_at: new Date().toISOString()
+        });
+        
+      if (messageError) throw messageError;
+      
+      toast({
+        title: "Transferência solicitada",
+        description: "Você será atendido por um agente em breve.",
+      });
+      
+      // Redirecionar para o chat com o mesmo ID de conversa
+      navigate(`/chat?conversation=${conversationId}`);
+    } catch (error) {
+      console.error("Erro ao transferir para atendente:", error);
+      toast({
+        title: "Erro ao transferir",
+        description: "Não foi possível solicitar atendimento humano. Tente novamente.",
+        variant: "destructive"
+      });
+      setTransferLoading(false);
     }
   };
 
@@ -125,7 +167,7 @@ const FAQ = () => {
           <CircleHelp className="h-16 w-16 mx-auto mb-4 text-yellow-500" />
           <h2 className="text-xl font-medium text-gray-900">Sem perguntas frequentes disponíveis</h2>
           <p className="text-gray-500 mt-2">Não encontramos perguntas frequentes para este serviço</p>
-          <Button className="mt-4" onClick={redirectToChat}>
+          <Button className="mt-4" onClick={transferToAgent}>
             Ir para o Atendimento
           </Button>
         </div>
@@ -179,8 +221,19 @@ const FAQ = () => {
 
         <div className="text-center">
           <p className="text-gray-600 mb-4">Não encontrou o que procurava?</p>
-          <Button onClick={redirectToChat} className="bg-chatbot-primary hover:bg-chatbot-dark">
-            Falar com Atendente
+          <Button 
+            onClick={transferToAgent} 
+            className="bg-chatbot-primary hover:bg-chatbot-dark"
+            disabled={transferLoading}
+          >
+            {transferLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Transferindo...
+              </>
+            ) : (
+              'Falar com Atendente'
+            )}
           </Button>
         </div>
       </div>
