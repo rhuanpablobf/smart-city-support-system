@@ -49,7 +49,7 @@ export const fetchAgentConversations = async (agentId?: string) => {
       throw activeError;
     }
     
-    // Buscar conversas em espera
+    // Buscar conversas em espera - não mais filtrar por agente_id aqui pois todas são elegíveis
     const { data: waitingConversations, error: waitingError } = await supabase
       .from('conversations')
       .select(`
@@ -74,7 +74,6 @@ export const fetchAgentConversations = async (agentId?: string) => {
     }
     
     // Buscar conversas sendo atendidas pelo bot (limitando a 50 para melhorar performance)
-    // Apenas buscar as mais recentes para evitar problemas de desempenho
     const { data: botConversations, error: botError } = await supabase
       .from('conversations')
       .select(`

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -109,7 +110,7 @@ const FAQ = () => {
           conversation_id: conversationId,
           content: 'Cliente solicitou atendimento humano',
           sender_id: conversationId,
-          sender_type: 'bot', // Changed from 'system' to 'bot' to match allowed types
+          sender_type: 'bot',
           timestamp: new Date().toISOString()
         });
         
@@ -120,8 +121,8 @@ const FAQ = () => {
         description: "Você será atendido por um agente em breve.",
       });
       
-      // Redirecionar para o chat com o mesmo ID de conversa
-      navigate(`/chat?conversation=${conversationId}`);
+      // Redirecionar para o chat com o mesmo ID de conversa em vez de voltar para a tela inicial
+      navigate(`/chat?conversation=${conversationId}&waiting=true`);
     } catch (error) {
       console.error("Erro ao transferir para atendente:", error);
       toast({
