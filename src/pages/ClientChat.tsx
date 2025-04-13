@@ -75,7 +75,7 @@ const ClientChat = () => {
         setConversation(data);
 
         // Se estiver em espera, calcular posição na fila
-        if (data.status === 'waiting') {
+        if (data && data.status === 'waiting') {
           calculateWaitingPosition(conversationId);
         }
       } catch (error) {
@@ -94,7 +94,7 @@ const ClientChat = () => {
 
     // Configura real-time updates para status da conversa
     if (conversationId) {
-      const ids = realtimeService.subscribeToTable('conversations', 'UPDATE', async (payload) => {
+      const subscriptionIds = realtimeService.subscribeToTable('conversations', 'UPDATE', async (payload) => {
         if (payload.new && payload.new.id === conversationId) {
           // Se o status mudou para 'active', recarregar a página para mostrar o chat
           if (payload.new.status === 'active' && payload.old.status === 'waiting') {
@@ -105,7 +105,7 @@ const ClientChat = () => {
         }
       });
       
-      setChannelIds(ids);
+      setChannelIds(subscriptionIds);
     }
 
     return () => {
