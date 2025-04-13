@@ -59,6 +59,9 @@ export const createDemoUsers = async () => {
             role: user.role,
             status: 'active',
             max_simultaneous_chats: 5
+          }, {
+            // The onConflict option ensures we don't get type errors
+            onConflict: 'id'
           });
 
         if (profileError) {
