@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -103,15 +102,15 @@ const FAQ = () => {
         
       if (error) throw error;
       
-      // Adicionar uma mensagem de sistema indicando a transferência
+      // Adicionar uma mensagem de bot indicando a transferência
       const { error: messageError } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
           content: 'Cliente solicitou atendimento humano',
           sender_id: conversationId,
-          sender_type: 'system', // Changed from 'type' to 'sender_type'
-          timestamp: new Date().toISOString() // Changed from 'created_at' to 'timestamp'
+          sender_type: 'bot', // Changed from 'system' to 'bot' to match allowed types
+          timestamp: new Date().toISOString()
         });
         
       if (messageError) throw messageError;
