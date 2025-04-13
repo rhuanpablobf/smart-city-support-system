@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Accordion } from '@/components/ui/accordion';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { QAItem } from '@/types';
 
 interface QAListProps {
@@ -10,23 +11,23 @@ const QAList: React.FC<QAListProps> = ({ items }) => {
   return (
     <Accordion type="single" collapsible className="w-full">
       {items.map((item) => (
-        <AccordionItem key={item.id} item={item} />
+        <FAQAccordionItem key={item.id} item={item} />
       ))}
     </Accordion>
   );
 };
 
-interface AccordionItemProps {
+interface FAQAccordionItemProps {
   item: QAItem;
 }
 
-const AccordionItem: React.FC<AccordionItemProps> = ({ item }) => {
+const FAQAccordionItem: React.FC<FAQAccordionItemProps> = ({ item }) => {
   return (
-    <Accordion.Item value={item.id}>
-      <Accordion.Header>
-        <Accordion.Trigger className="font-semibold">{item.question}</Accordion.Trigger>
-      </Accordion.Header>
-      <Accordion.Content className="py-2">
+    <AccordionItem value={item.id}>
+      <AccordionTrigger className="font-semibold">
+        {item.question}
+      </AccordionTrigger>
+      <AccordionContent className="py-2">
         {item.answer}
         {item.hasLink && item.linkUrl && item.linkText && (
           <div className="mt-2">
@@ -40,8 +41,8 @@ const AccordionItem: React.FC<AccordionItemProps> = ({ item }) => {
             <img src={item.imageUrl} alt={item.question} className="rounded-md max-w-full h-auto" />
           </div>
         )}
-      </Accordion.Content>
-    </Accordion.Item>
+      </AccordionContent>
+    </AccordionItem>
   );
 };
 

@@ -34,7 +34,13 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversation }) => {
           
         if (error) throw error;
         
-        setMessages(data || []);
+        // Convert sender_type to type for each message to match ChatMessage interface
+        const formattedMessages: ChatMessage[] = (data || []).map(message => ({
+          ...message,
+          type: message.sender_type // Map sender_type to type
+        }));
+        
+        setMessages(formattedMessages);
       } catch (error) {
         console.error('Error fetching messages:', error);
         toast({
@@ -61,7 +67,13 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversation }) => {
       'INSERT', 
       (payload) => {
         if (payload.new && payload.new.conversation_id === conversation.id) {
-          setMessages(prevMessages => [...prevMessages, payload.new as ChatMessage]);
+          // Convert sender_type to type for new messages
+          const newMessage = {
+            ...payload.new,
+            type: payload.new.sender_type
+          } as ChatMessage;
+          
+          setMessages(prevMessages => [...prevMessages, newMessage]);
         }
       }
     );

@@ -19,14 +19,15 @@ const FAQ = () => {
   // Usar hooks personalizados para gerenciar o estado e as chamadas de API
   const { 
     loading, 
-    qaItems, 
+    qaItems,
+    error,
     serviceInfo,
-    searchQuery,
-    setSearchQuery,
+    searchTerm,
+    handleSearchChange,
+    categories,
     selectedCategory,
-    setSelectedCategory,
-    categories
-  } = useFAQData(conversationId);
+    handleCategoryChange
+  } = useFAQData(null, conversationId);
   
   const { transferLoading, transferToAgent } = useAgentTransfer(conversationId);
 
@@ -40,6 +41,17 @@ const FAQ = () => {
     return (
       <ErrorState 
         message="Conversa não encontrada" 
+        buttonText="Voltar ao Início" 
+        onClick={() => window.location.href = "/"} 
+      />
+    );
+  }
+
+  // Renderizar erro quando ocorre outro erro
+  if (error) {
+    return (
+      <ErrorState 
+        message={error} 
         buttonText="Voltar ao Início" 
         onClick={() => window.location.href = "/"} 
       />
@@ -60,8 +72,8 @@ const FAQ = () => {
 
         {/* Barra de pesquisa */}
         <SearchBar 
-          searchQuery={searchQuery} 
-          onSearchChange={setSearchQuery} 
+          searchQuery={searchTerm} 
+          onSearchChange={handleSearchChange} 
         />
 
         {/* Filtro de categorias (se houver categorias) */}
@@ -69,7 +81,7 @@ const FAQ = () => {
           <CategoryFilter 
             categories={categories} 
             selectedCategory={selectedCategory} 
-            onCategoryChange={setSelectedCategory} 
+            onCategoryChange={handleCategoryChange} 
           />
         )}
 
