@@ -2,6 +2,7 @@
 // This file would contain code to create demo users
 // with different roles during development mode
 import { supabase } from '../integrations/supabase/client';
+import { UserRole } from '@/types';
 
 export const createDemoUsers = async () => {
   if (process.env.NODE_ENV !== 'development') return;
@@ -9,10 +10,10 @@ export const createDemoUsers = async () => {
   console.log('Creating demo users for development...');
 
   const demoUsers = [
-    { email: 'master@example.com', password: 'password123', role: 'master', name: 'Master Admin' },
-    { email: 'admin@example.com', password: 'password123', role: 'admin', name: 'Secretaria Admin' },
-    { email: 'manager@example.com', password: 'password123', role: 'manager', name: 'Gerente' },
-    { email: 'agent@example.com', password: 'password123', role: 'agent', name: 'Atendente' },
+    { email: 'master@example.com', password: 'password123', role: 'master' as UserRole, name: 'Master Admin' },
+    { email: 'admin@example.com', password: 'password123', role: 'admin' as UserRole, name: 'Secretaria Admin' },
+    { email: 'manager@example.com', password: 'password123', role: 'manager' as UserRole, name: 'Gerente' },
+    { email: 'agent@example.com', password: 'password123', role: 'agent' as UserRole, name: 'Atendente' },
   ];
 
   for (const user of demoUsers) {
