@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageCircle } from 'lucide-react';
 
 interface WaitingStateProps {
   waitingPosition: number;
@@ -28,6 +28,11 @@ const WaitingState: React.FC<WaitingStateProps> = ({ waitingPosition, conversati
             <h3 className="font-medium mb-1">Detalhes do atendimento:</h3>
             <p className="text-sm text-gray-600">Departamento: {conversation?.departments?.name}</p>
             <p className="text-sm text-gray-600">Serviço: {conversation?.services?.name}</p>
+          </div>
+          
+          <div className="mt-6 flex justify-center">
+            <MessageCircle className="h-5 w-5 animate-pulse text-chatbot-primary mr-2" />
+            <p className="text-sm text-chatbot-primary">Preparando seu atendimento...</p>
           </div>
         </div>
       </div>

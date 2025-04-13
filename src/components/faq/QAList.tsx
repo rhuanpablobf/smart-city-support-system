@@ -1,8 +1,6 @@
-
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { QAItem } from '@/hooks/useFAQData';
+import { Accordion } from '@/components/ui/accordion';
+import { QAItem } from '@/types';
 
 interface QAListProps {
   items: QAItem[];
@@ -10,38 +8,40 @@ interface QAListProps {
 
 const QAList: React.FC<QAListProps> = ({ items }) => {
   return (
-    <div className="space-y-4 mb-8">
+    <Accordion type="single" collapsible className="w-full">
       {items.map((item) => (
-        <Card key={item.id} className="bg-white border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <h3 className="font-medium text-lg text-gray-900 mb-2">{item.question}</h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{item.answer}</p>
-            
-            {item.has_link && item.link_url && item.link_text && (
-              <a 
-                href={item.link_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-chatbot-primary hover:text-chatbot-dark flex items-center mt-3"
-              >
-                {item.link_text}
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </a>
-            )}
-            
-            {item.has_image && item.image_url && (
-              <div className="mt-3">
-                <img 
-                  src={item.image_url} 
-                  alt="Imagem ilustrativa" 
-                  className="max-w-full h-auto rounded-md" 
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <AccordionItem key={item.id} item={item} />
       ))}
-    </div>
+    </Accordion>
+  );
+};
+
+interface AccordionItemProps {
+  item: QAItem;
+}
+
+const AccordionItem: React.FC<AccordionItemProps> = ({ item }) => {
+  return (
+    <Accordion.Item value={item.id}>
+      <Accordion.Header>
+        <Accordion.Trigger className="font-semibold">{item.question}</Accordion.Trigger>
+      </Accordion.Header>
+      <Accordion.Content className="py-2">
+        {item.answer}
+        {item.hasLink && item.linkUrl && item.linkText && (
+          <div className="mt-2">
+            <a href={item.linkUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+              {item.linkText}
+            </a>
+          </div>
+        )}
+        {item.hasImage && item.imageUrl && (
+          <div className="mt-4">
+            <img src={item.imageUrl} alt={item.question} className="rounded-md max-w-full h-auto" />
+          </div>
+        )}
+      </Accordion.Content>
+    </Accordion.Item>
   );
 };
 
