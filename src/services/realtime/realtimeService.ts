@@ -5,7 +5,10 @@ import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supab
 // Define a more accurate type for the payload based on what Supabase actually returns
 type PostgresChangesPayload = RealtimePostgresChangesPayload<{
   [key: string]: any;
-}>;
+}> & {
+  // Add a fallback eventType field to ensure compatibility
+  eventType?: string;
+};
 
 type SubscriptionCallback = (payload: PostgresChangesPayload) => void;
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
@@ -40,9 +43,17 @@ class RealtimeService {
             schema: 'public',
             table
           },
-          (payload: PostgresChangesPayload) => {
-            console.log(`Realtime update for ${table} (${event}):`, payload.eventType);
-            callback(payload);
+          (payload: any) => {
+            console.log(`Realtime update for ${table} (${event}):`, payload.eventType || event);
+            
+            // Convert the payload to our expected format
+            const processedPayload: PostgresChangesPayload = {
+              ...payload,
+              eventType: payload.eventType || event,
+              table
+            };
+            
+            callback(processedPayload);
           }
         )
         .subscribe((status) => {

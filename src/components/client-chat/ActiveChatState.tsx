@@ -57,7 +57,12 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
 
     // Configurar inscrição em tempo real para novas mensagens
     const subscriptionIds = realtimeService.subscribeToTable('messages', 'INSERT', (payload) => {
-      if (payload.new && payload.new.conversation_id === conversationId) {
+      // Type guard to check if payload.new exists and has expected properties
+      if (payload.new && 
+          typeof payload.new === 'object' && 
+          'conversation_id' in payload.new && 
+          payload.new.conversation_id === conversationId) {
+        
         const newMsg: ChatMessage = {
           id: payload.new.id,
           content: payload.new.content,

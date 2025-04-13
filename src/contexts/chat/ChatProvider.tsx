@@ -77,7 +77,9 @@ export function ChatProvider({ children }: ChatProviderProps) {
         async (payload) => {
           // React to relevant changes
           const conversationUpdated = payload.table === 'conversations';
-          const messageUpdated = payload.table === 'messages' && payload.new?.conversation_id;
+          const messageUpdated = payload.new && 
+                               typeof payload.new === 'object' && 
+                               'conversation_id' in payload.new;
           
           if (conversationUpdated || messageUpdated) {
             console.log('Realtime update triggered for conversations', payload);
