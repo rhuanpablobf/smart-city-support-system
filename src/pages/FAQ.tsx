@@ -109,8 +109,9 @@ const FAQ = () => {
         .insert({
           conversation_id: conversationId,
           content: 'Cliente solicitou atendimento humano',
-          type: 'system',
-          created_at: new Date().toISOString()
+          sender_id: conversationId,
+          sender_type: 'system', // Changed from 'type' to 'sender_type'
+          timestamp: new Date().toISOString() // Changed from 'created_at' to 'timestamp'
         });
         
       if (messageError) throw messageError;
