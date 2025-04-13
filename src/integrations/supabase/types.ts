@@ -503,7 +503,13 @@ export type Database = {
     }
     Enums: {
       agent_status_enum: "online" | "offline" | "break"
-      conversation_status_enum: "bot" | "waiting" | "active" | "closed"
+      conversation_status_enum:
+        | "bot"
+        | "waiting"
+        | "active"
+        | "closed"
+        | "abandoned"
+        | "completed"
       sender_type_enum: "bot" | "agent" | "user"
       user_role_enum: "admin" | "manager" | "agent" | "user"
     }
@@ -622,7 +628,14 @@ export const Constants = {
   public: {
     Enums: {
       agent_status_enum: ["online", "offline", "break"],
-      conversation_status_enum: ["bot", "waiting", "active", "closed"],
+      conversation_status_enum: [
+        "bot",
+        "waiting",
+        "active",
+        "closed",
+        "abandoned",
+        "completed",
+      ],
       sender_type_enum: ["bot", "agent", "user"],
       user_role_enum: ["admin", "manager", "agent", "user"],
     },
