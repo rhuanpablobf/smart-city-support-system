@@ -1,16 +1,9 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel, RealtimePostgresChangesPayload, PostgresChangesFilter } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 type SubscriptionCallback = (payload: RealtimePostgresChangesPayload<any>) => void;
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
-
-/**
- * Helper function to create a properly typed Postgres changes channel
- */
-function createPostgresChannel(channelId: string): RealtimeChannel<'postgres_changes'> {
-  return supabase.channel(channelId) as RealtimeChannel<'postgres_changes'>;
-}
 
 class RealtimeService {
   private channels: Record<string, RealtimeChannel> = {};
@@ -25,10 +18,10 @@ class RealtimeService {
   ): string {
     const channelId = `${table}-${event}-${Date.now()}`;
     
-    // Create the channel with the correct typing for Postgres changes
-    const channel = createPostgresChannel(channelId);
+    // Create the channel with the correct syntax for Supabase v2
+    const channel = supabase.channel(channelId);
     
-    // Configure the listener for Postgres changes with the proper syntax and typing
+    // Configure the listener for Postgres changes with the proper syntax
     channel
       .on(
         'postgres_changes',
@@ -36,7 +29,7 @@ class RealtimeService {
           event, 
           schema: 'public',
           table
-        } as PostgresChangesFilter,
+        },
         callback
       )
       .subscribe((status) => {
