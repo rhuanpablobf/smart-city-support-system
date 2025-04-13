@@ -18,21 +18,23 @@ class RealtimeService {
   ): string {
     const channelId = `${table}-${event}-${Date.now()}`;
     
-    // Create a channel for this subscription
+    // First create the channel
     const channel = supabase.channel(channelId);
     
-    // Configure the channel to listen for postgres changes
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event, 
-          schema: 'public',
-          table
-        },
-        callback
-      )
-      .subscribe();
+    // Then configure the channel to listen for postgres changes
+    // This is the correct order to avoid TypeScript errors
+    channel.on(
+      'postgres_changes',
+      {
+        event, 
+        schema: 'public',
+        table
+      },
+      callback
+    );
+    
+    // Finally subscribe to the channel
+    channel.subscribe();
     
     // Store the channel reference for later unsubscription
     this.channels[channelId] = channel;
