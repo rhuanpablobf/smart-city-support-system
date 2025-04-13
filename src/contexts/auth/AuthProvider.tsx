@@ -5,11 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/components/ui/use-toast";
 import { AuthContext } from './AuthContext';
 import { useAuthService } from './useAuthService';
-import { fetchUserProfile } from './userProfileService';
+import { useProfileData } from './hooks/useProfileData';
 
 // Auth provider component
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const authService = useAuthService();
+  const { loadUserProfile, loading: profileLoading } = useProfileData();
   const [sessionChecked, setSessionChecked] = useState(false);
   const [sessionError, setSessionError] = useState<Error | null>(null);
   const { toast } = useToast();
@@ -29,11 +30,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           // We'll handle profile fetching separately to avoid deadlocks
           setTimeout(async () => {
             if (!isMounted) return;
-            await fetchUserProfile(
+            await loadUserProfile(
               session.user.id,
-              authService.setCurrentUser,
-              authService.setLoading,
-              toast
+              authService.setCurrentUser
             );
           }, 0);
         } else if (event === 'SIGNED_OUT') {
@@ -56,11 +55,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         if (session?.user && isMounted) {
           console.log("Sessão existente encontrada, buscando perfil do usuário");
-          await fetchUserProfile(
+          await loadUserProfile(
             session.user.id,
-            authService.setCurrentUser,
-            authService.setLoading,
-            toast
+            authService.setCurrentUser
           );
         } else {
           console.log("Nenhuma sessão encontrada ou componente desmontado");
@@ -123,7 +120,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     ...authService,
     updateUser,
-    loading: authService.loading || !sessionChecked
+    loading: authService.loading || profileLoading || !sessionChecked
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
