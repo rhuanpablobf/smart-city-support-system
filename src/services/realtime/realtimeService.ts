@@ -21,8 +21,10 @@ class RealtimeService {
     // Create the channel with the correct syntax for Supabase v2
     const channel = supabase.channel(channelId);
     
-    // Configure the listener for Postgres changes with the proper syntax
-    channel
+    // Use type assertion to fix the TypeScript error with postgres_changes
+    // This is necessary because the TypeScript definitions in supabase-js don't fully
+    // capture the runtime behavior of the Realtime API
+    (channel as any)
       .on(
         'postgres_changes',
         {
@@ -32,7 +34,7 @@ class RealtimeService {
         },
         callback
       )
-      .subscribe((status) => {
+      .subscribe((status: string) => {
         console.log(`Realtime subscription to ${table} (${event}): ${status}`);
       });
     
