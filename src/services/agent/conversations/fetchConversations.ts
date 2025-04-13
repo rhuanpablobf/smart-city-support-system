@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { formatConversation } from '../utils/conversationFormatters';
 import { cleanupAbandonedConversations } from '../cleanup/abandonedConversationsCleanup';
@@ -11,9 +12,16 @@ export const fetchAgentConversations = async (agentId?: string) => {
     if (!agentId) {
       const { data: { user } } = await supabase.auth.getUser();
       agentId = user?.id;
+      
+      if (!user) {
+        console.error("Não foi possível obter o usuário atual");
+        return { active: [], waiting: [], bot: [] };
+      }
     }
 
-    // Limpar conversas de clientes que desistiram (mais de 3 minutos sem atividade em espera)
+    console.log("Fetching conversations for agent:", agentId);
+
+    // Limpar conversas de clientes que desistiram (mais de 15 minutos sem atividade em espera)
     await cleanupAbandonedConversations();
 
     // Buscar conversas ativas deste agente

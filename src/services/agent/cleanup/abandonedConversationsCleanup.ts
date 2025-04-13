@@ -8,6 +8,8 @@ import { formatConversation } from '../utils/conversationFormatters';
  */
 export const cleanupAbandonedConversations = async () => {
   try {
+    console.log("Running abandoned conversations cleanup");
+    
     // Find conversations that are waiting for response for more than 15 minutes
     const thresholdTime = new Date();
     thresholdTime.setMinutes(thresholdTime.getMinutes() - 15); 
@@ -39,6 +41,8 @@ export const cleanupAbandonedConversations = async () => {
     
     // Mark these conversations as abandoned
     if (waitingConversations && waitingConversations.length > 0) {
+      console.log(`Found ${waitingConversations.length} abandoned conversations`);
+      
       const abandonedIds = waitingConversations.map(c => c.id);
       
       const { error: updateError } = await supabase
@@ -51,7 +55,24 @@ export const cleanupAbandonedConversations = async () => {
       
       if (updateError) {
         console.error('Error marking conversations as abandoned:', updateError);
+      } else {
+        console.log(`Marked ${abandonedIds.length} conversations as abandoned`);
       }
+      
+      // Add system message to each abandoned conversation
+      for (const convId of abandonedIds) {
+        await supabase
+          .from('messages')
+          .insert({
+            conversation_id: convId,
+            content: 'Atendimento abandonado por inatividade.',
+            sender_type: 'system',
+            sender_id: '00000000-0000-0000-0000-000000000000', // System message
+            timestamp: new Date().toISOString()
+          });
+      }
+    } else {
+      console.log("No abandoned conversations found");
     }
     
     return waitingConversations ? waitingConversations.map(formatConversation) : [];
