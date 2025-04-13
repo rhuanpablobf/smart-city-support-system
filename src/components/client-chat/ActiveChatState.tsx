@@ -56,7 +56,7 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
     fetchMessages();
 
     // Configurar inscrição em tempo real para novas mensagens
-    const channelIds: string[] = realtimeService.subscribeToTable('messages', 'INSERT', (payload) => {
+    const subscriptionIds = realtimeService.subscribeToTable('messages', 'INSERT', (payload) => {
       if (payload.new && payload.new.conversation_id === conversationId) {
         const newMsg: ChatMessage = {
           id: payload.new.id,
@@ -74,8 +74,10 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
     });
 
     return () => {
-      if (channelIds.length > 0) {
-        realtimeService.unsubscribeAll(channelIds);
+      if (subscriptionIds) {
+        // Ensure the returned value is handled correctly based on what realtimeService.subscribeToTable returns
+        // If it returns a single string, we need to put it in an array when unsubscribing
+        realtimeService.unsubscribeAll(Array.isArray(subscriptionIds) ? subscriptionIds : [subscriptionIds]);
       }
     };
   }, [conversationId]);
