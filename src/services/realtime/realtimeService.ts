@@ -21,24 +21,23 @@ class RealtimeService {
     // Create channel with unique ID based on table and event type
     const channel = supabase.channel(channelId);
     
-    // Subscribe to postgres changes
-    channel.on(
-      'postgres_changes',
-      {
-        event,
-        schema: 'public',
-        table
-      },
-      (payload) => {
-        console.log(`Realtime ${event} event on ${table}:`, payload);
-        callback(payload);
-      }
-    );
+    // Subscribe to postgres changes using the correct syntax
+    channel
+      .on(
+        'postgres_changes', 
+        { 
+          event: event,
+          schema: 'public', 
+          table: table 
+        },
+        callback
+      )
+      .subscribe((status) => {
+        console.log(`Realtime subscription to ${table} status:`, status);
+      });
     
-    // Store the channel after subscribing
-    this.channels[channelId] = channel.subscribe((status) => {
-      console.log(`Realtime subscription to ${table} status:`, status);
-    });
+    // Store the channel reference for later unsubscription
+    this.channels[channelId] = channel;
     
     return channelId;
   }
