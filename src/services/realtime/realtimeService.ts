@@ -1,8 +1,18 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
-type SubscriptionCallback = (payload: RealtimePostgresChangesPayload<any>) => void;
+// Define a more accurate type for the payload based on what Supabase actually returns
+type PostgresChangesPayload = {
+  schema: string;
+  table: string;
+  commit_timestamp: string;
+  eventType: string;
+  new: Record<string, any> | null;
+  old: Record<string, any> | null;
+};
+
+type SubscriptionCallback = (payload: PostgresChangesPayload) => void;
 type EventType = 'INSERT' | 'UPDATE' | 'DELETE' | '*';
 
 class RealtimeService {
@@ -33,9 +43,9 @@ class RealtimeService {
             schema: 'public',
             table
           },
-          (payload) => {
+          (payload: any) => {
             console.log(`Realtime update for ${table} (${event}):`, payload.eventType);
-            callback(payload);
+            callback(payload as PostgresChangesPayload);
           }
         )
         .subscribe((status) => {
