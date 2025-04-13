@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserCheck, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { AgentDashboardStats } from '@/services/agent';
@@ -8,7 +8,8 @@ interface StatsCardsProps {
   stats: AgentDashboardStats;
 }
 
-const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
+// Usando memo para evitar renderizações desnecessárias
+const StatsCards: React.FC<StatsCardsProps> = memo(({ stats }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <Card>
@@ -78,6 +79,9 @@ const StatsCards: React.FC<StatsCardsProps> = ({ stats }) => {
       </Card>
     </div>
   );
-};
+});
+
+// Definir displayName para o componente memo
+StatsCards.displayName = 'StatsCards';
 
 export default StatsCards;

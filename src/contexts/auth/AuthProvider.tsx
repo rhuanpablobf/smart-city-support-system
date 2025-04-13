@@ -82,6 +82,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
   
+  // Adicionar refresh token periódico para manter sessão ativa
+  useEffect(() => {
+    if (!authService.currentUser) return;
+    
+    const refreshInterval = setInterval(async () => {
+      try {
+        // Refresh da sessão para evitar expiração
+        const { error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.warn("Erro ao atualizar sessão:", error);
+        }
+      } catch (err) {
+        console.error("Erro no refresh da sessão:", err);
+      }
+    }, 5 * 60 * 1000); // 5 minutos
+    
+    return () => clearInterval(refreshInterval);
+  }, [authService.currentUser]);
+  
   const updateUser = async (userData: Partial<User>): Promise<User> => {
     try {
       if (!authService.currentUser) throw new Error("No user is currently logged in");

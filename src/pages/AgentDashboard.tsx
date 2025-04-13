@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ChatProvider } from '@/contexts/chat';
 import StatsCards from '@/components/agent-dashboard/StatsCards';
 import AgentStatusBar from '@/components/agent-dashboard/AgentStatusBar';
@@ -9,27 +9,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { LoaderCircle } from 'lucide-react';
 
 const AgentDashboard = () => {
-  const { agentStatus, stats, loading, updateAgentStatus, refreshStats } = useAgentDashboard();
+  const { agentStatus, stats, loading, updateAgentStatus } = useAgentDashboard();
   const { toast } = useToast();
-  
-  // Refresh stats on initial load
-  useEffect(() => {
-    refreshStats().catch((error) => {
-      console.error("Error refreshing stats:", error);
-      toast({
-        title: "Erro ao carregar estatísticas",
-        description: "Não foi possível carregar as estatísticas. Por favor, tente novamente.",
-        variant: "destructive"
-      });
-    });
-    
-    // Set up automatic refresh every 60 seconds
-    const interval = setInterval(() => {
-      refreshStats().catch(console.error);
-    }, 60000);
-    
-    return () => clearInterval(interval);
-  }, [refreshStats, toast]);
   
   return (
     <ChatProvider>

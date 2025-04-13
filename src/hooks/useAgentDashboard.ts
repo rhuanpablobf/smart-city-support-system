@@ -4,6 +4,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { fetchAgentDashboardStats, AgentDashboardStats } from '@/services/agent';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth';
+import { realtimeService } from '@/services/realtime/realtimeService';
 
 export const useAgentDashboard = () => {
   const [agentStatus, setAgentStatus] = useState<'online' | 'offline' | 'break'>('online');
@@ -18,6 +19,7 @@ export const useAgentDashboard = () => {
     abandonedRate: 0
   });
   const [loading, setLoading] = useState(true);
+  const [channelIds, setChannelIds] = useState<string[]>([]);
   const { toast } = useToast();
   const { currentUser } = useAuth();
   
@@ -70,17 +72,34 @@ export const useAgentDashboard = () => {
     fetchAgentStatus();
   }, [currentUser]);
   
+  // Usar realtime para atualização de estatísticas
   useEffect(() => {
     // Load stats on component mount
     refreshStats().catch(console.error);
     
-    // Atualizar dados a cada 30 segundos
-    const interval = setInterval(() => {
-      refreshStats().catch(console.error);
-    }, 30000);
+    // Configurar assinaturas realtime para atualização das estatísticas
+    const ids = realtimeService.subscribeToTables(
+      ['conversations', 'messages', 'agent_statuses'],
+      '*',
+      async (payload) => {
+        // Atualizar estatísticas somente quando necessário
+        if (
+          (payload.table === 'conversations') ||
+          (payload.table === 'agent_statuses' && payload.new?.id === currentUser?.id)
+        ) {
+          console.log('Atualização realtime para estatísticas do dashboard');
+          await refreshStats();
+        }
+      }
+    );
     
-    return () => clearInterval(interval);
-  }, [refreshStats]);
+    setChannelIds(ids);
+    
+    return () => {
+      // Limpar subscrições realtime
+      realtimeService.unsubscribeAll(ids);
+    };
+  }, [refreshStats, currentUser?.id]);
 
   // Função para quando o agente atualiza seu status
   const updateAgentStatus = async (value: string) => {

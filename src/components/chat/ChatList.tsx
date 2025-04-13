@@ -26,7 +26,8 @@ const ChatList = () => {
     conversations.bot || []
   );
 
-  // Load conversations from database
+  // Load conversations only once on component mount
+  // Real-time updates will be handled by ChatProvider
   const loadConversations = useCallback(async () => {
     try {
       setLoading(true);
@@ -40,7 +41,7 @@ const ChatList = () => {
         bot: data.bot || []
       });
       
-      console.log("Conversas carregadas:", {
+      console.log("Conversas carregadas manualmente:", {
         active: data.active?.length || 0,
         waiting: data.waiting?.length || 0,
         bot: data.bot?.length || 0
@@ -59,13 +60,9 @@ const ChatList = () => {
   }, [toast, setConversations]);
 
   useEffect(() => {
+    // Load conversations only once on mount
     loadConversations();
-    
-    // Update conversations every 15 seconds instead of 10
-    // to reduce server load
-    const interval = setInterval(loadConversations, 15000);
-    
-    return () => clearInterval(interval);
+    // Polling removed - now using realtime updates via ChatProvider
   }, [loadConversations]);
 
   // Accept a waiting conversation
@@ -74,10 +71,7 @@ const ChatList = () => {
       setLoading(true);
       await acceptWaitingConversation(conversationId);
       
-      // Reload conversations to reflect the change
-      await loadConversations();
-      
-      // Select the accepted conversation
+      // Select the accepted conversation immediately
       selectConversation(conversationId);
       
       toast({
@@ -85,6 +79,8 @@ const ChatList = () => {
         description: "Você está agora atendendo esta conversa.",
         variant: "default"
       });
+      
+      // No need to reload - realtime will handle that
     } catch (error) {
       console.error("Erro ao aceitar conversa:", error);
       toast({

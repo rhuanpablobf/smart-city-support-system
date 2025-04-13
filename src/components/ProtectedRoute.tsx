@@ -38,7 +38,7 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
         });
         // Force logout to reset the authentication state
         logout().catch(console.error);
-      }, 8000); // 8 segundos
+      }, 15000); // Aumentado para 15 segundos
       
       setTimeoutId(id);
     }
