@@ -69,7 +69,10 @@ export function ChatProvider({ children }: ChatProviderProps) {
             
             // Only reload if it's a relevant update (status change, new message in current conversation)
             if (conversationUpdated && 
-                payload.new?.status !== payload.old?.status) {
+                payload.new && payload.old && 
+                // Check if both objects exist and have a status property before comparing
+                'status' in payload.new && 'status' in payload.old && 
+                payload.new.status !== payload.old.status) {
               console.log('Status changed, reloading conversations');
               await loadConversations();
             } else if (messageUpdated) {
