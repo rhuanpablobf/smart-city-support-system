@@ -15,6 +15,7 @@ import CategoryFilter from '@/components/faq/CategoryFilter';
 const FAQ = () => {
   const [searchParams] = useSearchParams();
   const conversationId = searchParams.get('conversationId');
+  const serviceId = searchParams.get('serviceId');
   
   // Usar hooks personalizados para gerenciar o estado e as chamadas de API
   const { 
@@ -27,7 +28,7 @@ const FAQ = () => {
     categories,
     selectedCategory,
     handleCategoryChange
-  } = useFAQData(conversationId);
+  } = useFAQData(serviceId, conversationId);
   
   const { transferLoading, transferToAgent } = useAgentTransfer(conversationId);
 
@@ -37,7 +38,7 @@ const FAQ = () => {
   }
 
   // Renderizar erro quando não tem ID de conversa
-  if (!conversationId) {
+  if (!conversationId && !serviceId) {
     return (
       <ErrorState 
         message="Conversa não encontrada" 

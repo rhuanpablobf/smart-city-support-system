@@ -66,8 +66,8 @@ const ClientChat = () => {
   }
 
   // Mostrar tela de chatbot ativo se estamos em atendimento
-  if (conversation && conversation.status === 'active') {
-    return <ActiveChatState conversation={conversation} />;
+  if (conversation && conversation.status === 'active' && conversationId) {
+    return <ActiveChatState conversationId={conversationId} />;
   }
 
   // Formulário inicial para iniciar uma conversa

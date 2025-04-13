@@ -56,7 +56,7 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
     fetchMessages();
 
     // Configurar inscrição em tempo real para novas mensagens
-    const channelIds = realtimeService.subscribeToTable('messages', 'INSERT', (payload) => {
+    const channelIds: string[] = realtimeService.subscribeToTable('messages', 'INSERT', (payload) => {
       if (payload.new && payload.new.conversation_id === conversationId) {
         const newMsg: ChatMessage = {
           id: payload.new.id,
