@@ -34,9 +34,10 @@ class RealtimeService {
       const channel = supabase.channel(channelId);
       
       // Inscreve-se nas mudanças do postgres com a sintaxe API correta
+      // Use type assertion para evitar o erro de tipo
       channel
         .on(
-          'postgres_changes',
+          'postgres_changes' as any,
           { 
             event, 
             schema: 'public',

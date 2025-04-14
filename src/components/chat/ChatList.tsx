@@ -2,11 +2,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useChat } from '@/contexts/chat';
 import { useToast } from '@/components/ui/use-toast';
-import { fetchAgentConversations, acceptWaitingConversation } from '@/services/agent';
+import { fetchAgentConversations } from '@/services/agent';
 import { useConversationSearch } from '@/hooks/useConversationSearch';
 import SearchInput from './list/SearchInput';
 import ConversationTabs from './list/ConversationTabs';
 import { useAuth } from '@/contexts/auth';
+import { acceptWaitingConversation } from '@/services/agent/conversations/manageConversations';
 
 const ChatList = () => {
   const { 
@@ -165,8 +166,5 @@ const ChatList = () => {
     </div>
   );
 };
-
-// Import here to avoid circular dependency
-import { acceptWaitingConversation } from '@/services/agent';
 
 export default ChatList;

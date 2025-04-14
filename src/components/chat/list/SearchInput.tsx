@@ -2,15 +2,16 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { MessageSquarePlus, Search } from 'lucide-react';
+import { MessageSquarePlus, Search, RefreshCw } from 'lucide-react';
 
 interface SearchInputProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onNewChat: () => void;
+  onRefresh?: () => Promise<void>;
 }
 
-const SearchInput = ({ searchTerm, onSearchChange, onNewChat }: SearchInputProps) => {
+const SearchInput = ({ searchTerm, onSearchChange, onNewChat, onRefresh }: SearchInputProps) => {
   return (
     <div className="p-3 flex items-center space-x-2">
       <div className="relative flex-1">
@@ -30,6 +31,16 @@ const SearchInput = ({ searchTerm, onSearchChange, onNewChat }: SearchInputProps
       >
         <MessageSquarePlus className="h-4 w-4" />
       </Button>
+      {onRefresh && (
+        <Button 
+          onClick={onRefresh}
+          variant="outline" 
+          size="icon"
+          className="h-9 w-9 flex-shrink-0"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 };
