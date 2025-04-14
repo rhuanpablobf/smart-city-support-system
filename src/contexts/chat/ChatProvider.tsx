@@ -78,14 +78,13 @@ export function ChatProvider({ children }: ChatProviderProps) {
           // React to relevant changes
           const conversationUpdated = payload.table === 'conversations';
           const messageUpdated = payload.new && 
-                               typeof payload.new === 'object' && 
                                'conversation_id' in payload.new;
           
           if (conversationUpdated || messageUpdated) {
             console.log('Realtime update triggered for conversations', {
               table: payload.table,
-              eventType: payload.eventType,
-              id: payload.new && typeof payload.new === 'object' && 'id' in payload.new ? payload.new.id : null
+              event: payload.eventType,
+              id: payload.new && 'id' in payload.new ? payload.new.id : null
             });
             
             // Reload all conversations to ensure we have the latest data

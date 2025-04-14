@@ -49,18 +49,15 @@ export const useConversationStatus = (conversationId: string | null) => {
     if (conversationId) {
       const subscriptionIds = realtimeService.subscribeToTable('conversations', 'UPDATE', async (payload) => {
         if (payload.new && 
-            typeof payload.new === 'object' && 
             'id' in payload.new && 
             payload.new.id === conversationId) {
           
           // Verificar se payload.old e payload.new existem e têm a propriedade status
           const oldStatus = payload.old && 
-                          typeof payload.old === 'object' && 
                           'status' in payload.old ? 
                           payload.old.status : null;
                           
           const newStatus = payload.new && 
-                          typeof payload.new === 'object' && 
                           'status' in payload.new ? 
                           payload.new.status : null;
           
