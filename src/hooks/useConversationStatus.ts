@@ -53,7 +53,7 @@ export const useConversationStatus = (conversationId: string | null) => {
             'id' in payload.new && 
             payload.new.id === conversationId) {
           
-          // Check if payload.old and payload.new both exist and have status property
+          // Verificar se payload.old e payload.new existem e têm a propriedade status
           const oldStatus = payload.old && 
                           typeof payload.old === 'object' && 
                           'status' in payload.old ? 
@@ -64,9 +64,15 @@ export const useConversationStatus = (conversationId: string | null) => {
                           'status' in payload.new ? 
                           payload.new.status : null;
           
+          console.log(`Conversa ${conversationId} mudou de status: ${oldStatus} -> ${newStatus}`);
+          
           // Se o status mudou para 'active', recarregar a página para mostrar o chat
           if (newStatus === 'active' && oldStatus === 'waiting') {
-            window.location.reload();
+            toast({
+              title: "Atendimento iniciado!",
+              description: "Um agente aceitou seu atendimento. Atualizando a página...",
+            });
+            setTimeout(() => window.location.reload(), 2000);
           } else {
             setConversation(payload.new);
           }

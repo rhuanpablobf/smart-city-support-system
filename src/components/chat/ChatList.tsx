@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useChat } from '@/contexts/chat';
 import { useToast } from '@/components/ui/use-toast';
-import { fetchAgentConversations } from '@/services/agent';
+import { fetchAgentConversations, acceptWaitingConversation } from '@/services/agent';
 import { useConversationSearch } from '@/hooks/useConversationSearch';
 import SearchInput from './list/SearchInput';
 import ConversationTabs from './list/ConversationTabs';
@@ -80,19 +80,25 @@ const ChatList = () => {
   const handleAcceptWaiting = async (conversationId: string) => {
     try {
       setLoading(true);
-      await acceptWaitingConversation(conversationId);
       
-      // Select the accepted conversation immediately
-      selectConversation(conversationId);
+      // Tenta aceitar a conversa em espera
+      const success = await acceptWaitingConversation(conversationId);
       
-      toast({
-        title: "Conversa aceita",
-        description: "Você está agora atendendo esta conversa.",
-        variant: "default"
-      });
-      
-      // Recarregar conversas para refletir a mudança
-      await loadConversations();
+      if (success) {
+        // Select the accepted conversation immediately
+        selectConversation(conversationId);
+        
+        toast({
+          title: "Conversa aceita",
+          description: "Você está agora atendendo esta conversa.",
+          variant: "default"
+        });
+        
+        // Recarregar conversas para refletir a mudança
+        await loadConversations();
+      } else {
+        throw new Error("Não foi possível aceitar a conversa");
+      }
     } catch (error) {
       console.error("Erro ao aceitar conversa:", error);
       toast({
@@ -110,6 +116,15 @@ const ChatList = () => {
     loadConversations();
   };
 
+  // Adicionar função para recarregar manualmente as conversas
+  const handleRefresh = async () => {
+    await loadConversations();
+    toast({
+      title: "Atualizado",
+      description: "Lista de conversas atualizada.",
+    });
+  };
+
   // Exibir informações para depuração
   console.log("ChatList render - Conversations:", {
     active: conversations.active.length,
@@ -123,6 +138,7 @@ const ChatList = () => {
         searchTerm={searchTerm} 
         onSearchChange={setSearchTerm} 
         onNewChat={startNewChat} 
+        onRefresh={handleRefresh}
       />
       
       {loadError ? (

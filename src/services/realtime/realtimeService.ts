@@ -2,12 +2,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-// Define a more accurate type for the payload based on what Supabase actually returns
+// Define uma tipagem mais precisa para o payload baseado no que o Supabase retorna
 type PostgresChangesPayload = RealtimePostgresChangesPayload<{
   [key: string]: any;
 }> & {
-  // Add a fallback eventType field to ensure compatibility
+  // Adicionamos um campo eventType para compatibilidade
   eventType?: string;
+  table?: string;
 };
 
 type SubscriptionCallback = (payload: PostgresChangesPayload) => void;
@@ -17,7 +18,7 @@ class RealtimeService {
   private channels: Record<string, RealtimeChannel> = {};
   
   /**
-   * Subscribe to real-time updates for a specific table
+   * Inscreve-se em atualizações em tempo real para uma tabela específica
    */
   subscribeToTable(
     table: string, 
@@ -29,24 +30,22 @@ class RealtimeService {
     console.log(`Setting up realtime subscription for ${table} (${event})`);
     
     try {
-      // Create the channel with the correct syntax for Supabase v2
+      // Cria o canal com a sintaxe correta para o Supabase v2
       const channel = supabase.channel(channelId);
       
-      // Subscribe to postgres changes with the correct API syntax
-      // We need to use "as any" here because the TypeScript definitions for Supabase
-      // don't perfectly match the actual API capabilities for realtime subscriptions
+      // Inscreve-se nas mudanças do postgres com a sintaxe API correta
       channel
         .on(
-          'postgres_changes' as any,
+          'postgres_changes',
           { 
             event, 
             schema: 'public',
             table
           },
-          (payload: any) => {
+          (payload) => {
             console.log(`Realtime update for ${table} (${event}):`, payload.eventType || event);
             
-            // Convert the payload to our expected format
+            // Converte o payload para nosso formato esperado
             const processedPayload: PostgresChangesPayload = {
               ...payload,
               eventType: payload.eventType || event,
@@ -60,7 +59,7 @@ class RealtimeService {
           console.log(`Realtime subscription to ${table} (${event}): ${status}`);
         });
       
-      // Store the channel reference for future management
+      // Armazena a referência do canal para gerenciamento futuro
       this.channels[channelId] = channel;
     } catch (error) {
       console.error(`Error setting up realtime subscription for ${table}:`, error);
@@ -70,7 +69,7 @@ class RealtimeService {
   }
   
   /**
-   * Subscribe to multiple tables at once
+   * Inscreve-se em múltiplas tabelas de uma só vez
    */
   subscribeToTables(
     tables: string[],
@@ -92,7 +91,7 @@ class RealtimeService {
   }
   
   /**
-   * Unsubscribe from a specific channel
+   * Cancela a inscrição de um canal específico
    */
   unsubscribe(channelId: string): void {
     if (this.channels[channelId]) {
@@ -107,14 +106,14 @@ class RealtimeService {
   }
   
   /**
-   * Unsubscribe from multiple channels
+   * Cancela a inscrição de múltiplos canais
    */
   unsubscribeAll(channelIds: string[]): void {
     channelIds.forEach(id => this.unsubscribe(id));
   }
   
   /**
-   * Close all active channels
+   * Fecha todos os canais ativos
    */
   closeAll(): void {
     Object.keys(this.channels).forEach(id => this.unsubscribe(id));

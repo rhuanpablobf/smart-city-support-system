@@ -6,6 +6,7 @@ import { Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { ChatMessage } from '@/types';
 import { realtimeService } from '@/services/realtime/realtimeService';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ActiveChatStateProps {
   conversationId: string;
@@ -15,8 +16,10 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Função para rolar automaticamente para a mensagem mais recente
   const scrollToBottom = () => {
@@ -27,6 +30,7 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
   useEffect(() => {
     const fetchMessages = async () => {
       try {
+        setLoading(true);
         const { data, error } = await supabase
           .from('messages')
           .select('*')
@@ -50,6 +54,13 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
         setTimeout(scrollToBottom, 100);
       } catch (error) {
         console.error('Erro ao carregar mensagens:', error);
+        toast({
+          title: "Erro ao carregar mensagens",
+          description: "Não foi possível carregar o histórico de mensagens",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -64,31 +75,72 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
           payload.new.conversation_id === conversationId) {
         
         const newMsg: ChatMessage = {
-          id: payload.new.id,
-          content: payload.new.content,
-          type: payload.new.sender_type, // Converter sender_type para type
-          sender_id: payload.new.sender_id,
-          timestamp: payload.new.timestamp,
-          conversation_id: payload.new.conversation_id,
-          read: payload.new.read,
+          id: payload.new.id as string,
+          content: payload.new.content as string,
+          type: payload.new.sender_type as "bot" | "agent" | "user", 
+          sender_id: payload.new.sender_id as string,
+          timestamp: payload.new.timestamp as string,
+          conversation_id: payload.new.conversation_id as string,
+          read: payload.new.read as boolean,
         };
         
+        // Se a mensagem é de um agente, mostrar indicador de digitação
+        if (newMsg.type === 'agent') {
+          setIsTyping(false);
+        }
+        
         setMessages(prev => [...prev, newMsg]);
+        setTimeout(scrollToBottom, 100);
+      }
+    });
+    
+    // Inscrição para atualizações de conversa (quando um agente aceita o atendimento)
+    const conversationSubscriptionIds = realtimeService.subscribeToTable('conversations', 'UPDATE', (payload) => {
+      if (payload.new && 
+          typeof payload.new === 'object' && 
+          'id' in payload.new && 
+          payload.new.id === conversationId &&
+          'status' in payload.new &&
+          payload.new.status === 'active') {
+            
+        // Se o agente aceitou o atendimento, exibir mensagem
+        toast({
+          title: "Atendimento iniciado!",
+          description: "Um agente está atendendo você agora.",
+        });
+        
+        // Adicionar mensagem de sistema
+        const systemMsg: ChatMessage = {
+          id: `system-${Date.now()}`,
+          content: "Um agente iniciou o atendimento. Aguarde a resposta.",
+          type: "bot",
+          sender_id: "system",
+          timestamp: new Date().toISOString(),
+          conversation_id: conversationId,
+          read: false,
+        };
+        
+        setMessages(prev => [...prev, systemMsg]);
         setTimeout(scrollToBottom, 100);
       }
     });
 
     return () => {
       // Garantir que estamos desinscrever corretamente
-      realtimeService.unsubscribeAll(subscriptionIds);
+      realtimeService.unsubscribeAll([...subscriptionIds, ...conversationSubscriptionIds]);
     };
-  }, [conversationId]);
+  }, [conversationId, toast]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
     
     setLoading(true);
     try {
+      // Mostrar indicador de digitação para agente
+      if (messages.some(m => m.type === 'agent')) {
+        setIsTyping(true);
+      }
+      
       const { error } = await supabase
         .from('messages')
         .insert([
@@ -96,7 +148,7 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
             conversation_id: conversationId,
             content: newMessage,
             sender_type: 'user',
-            sender_id: 'client', // Poderia ser o ID do usuário se autenticado
+            sender_id: 'client',
             timestamp: new Date().toISOString(),
           }
         ]);
@@ -107,6 +159,12 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
       // O scroll acontecerá quando recebermos a mensagem via realtime 
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
+      toast({
+        title: "Erro ao enviar mensagem",
+        description: "Não foi possível enviar sua mensagem. Tente novamente.",
+        variant: "destructive"
+      });
+      setIsTyping(false);
     } finally {
       setLoading(false);
     }
@@ -136,6 +194,11 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
                   : 'mr-auto bg-chatbot-message-received rounded-t-lg rounded-br-lg'
               } p-3 shadow-sm`}
             >
+              {message.type !== 'user' && (
+                <p className="text-xs text-gray-500 mb-1">
+                  {message.type === 'agent' ? 'Atendente' : 'Sistema'}
+                </p>
+              )}
               <p className="text-sm">{message.content}</p>
               <p className="text-xs text-gray-500 mt-1 text-right">
                 {new Date(message.timestamp).toLocaleTimeString([], {
@@ -150,6 +213,17 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
             Inicie a conversa enviando uma mensagem.
           </div>
         )}
+        
+        {isTyping && (
+          <div className="mr-auto bg-chatbot-message-received rounded-lg p-3 max-w-[80%]">
+            <div className="flex space-x-1">
+              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+              <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            </div>
+          </div>
+        )}
+        
         <div ref={messagesEndRef} />
       </div>
       
