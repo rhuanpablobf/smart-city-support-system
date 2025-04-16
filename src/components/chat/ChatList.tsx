@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useChat } from '@/contexts/chat';
 import { useToast } from '@/components/ui/use-toast';
-import { fetchAgentConversations } from '@/services/agent';
 import { useConversationSearch } from '@/hooks/useConversationSearch';
 import SearchInput from './list/SearchInput';
 import ConversationTabs from './list/ConversationTabs';
@@ -15,7 +14,8 @@ const ChatList = () => {
     setConversations,
     currentConversation, 
     selectConversation, 
-    startNewChat 
+    startNewChat,
+    refreshConversations
   } = useChat();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -29,47 +29,8 @@ const ChatList = () => {
     conversations.bot || []
   );
 
-  // Load conversations manually with a button click
-  const loadConversations = useCallback(async () => {
-    try {
-      if (!currentUser?.id) {
-        console.log("Não foi possível carregar conversas: Usuário não autenticado");
-        setLoadError("Usuário não autenticado");
-        return;
-      }
-      
-      setLoading(true);
-      setLoadError(null);
-      const data = await fetchAgentConversations(currentUser.id);
-      
-      // Update chat context with loaded conversations
-      setConversations({
-        active: data.active || [],
-        waiting: data.waiting || [],
-        bot: data.bot || []
-      });
-      
-      console.log("Conversas carregadas manualmente:", {
-        active: data.active?.length || 0,
-        waiting: data.waiting?.length || 0,
-        bot: data.bot?.length || 0
-      });
-    } catch (error) {
-      console.error("Erro ao carregar conversas:", error);
-      setLoadError("Falha ao carregar conversas");
-      toast({
-        title: "Erro ao carregar conversas",
-        description: "Não foi possível carregar as conversas. Tente novamente.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast, setConversations, currentUser]);
-
+  // Reset loading status after a short delay
   useEffect(() => {
-    // We don't do the initial load here anymore, as ChatProvider handles it
-    // We just set loading to false after a short delay to avoid showing loading state unnecessarily
     const timer = setTimeout(() => {
       setLoading(false);
     }, 500);
@@ -82,7 +43,7 @@ const ChatList = () => {
     try {
       setLoading(true);
       
-      // Tenta aceitar a conversa em espera
+      // Try to accept the waiting conversation
       const success = await acceptWaitingConversation(conversationId);
       
       if (success) {
@@ -95,16 +56,16 @@ const ChatList = () => {
           variant: "default"
         });
         
-        // Recarregar conversas para refletir a mudança
-        await loadConversations();
+        // Reload conversations to reflect the change
+        await refreshConversations();
       } else {
         throw new Error("Não foi possível aceitar a conversa");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao aceitar conversa:", error);
       toast({
         title: "Erro ao aceitar conversa",
-        description: "Não foi possível aceitar a conversa. Tente novamente.",
+        description: error.message || "Não foi possível aceitar a conversa. Tente novamente.",
         variant: "destructive"
       });
     } finally {
@@ -112,26 +73,21 @@ const ChatList = () => {
     }
   };
 
-  // Função para tentar recarregar quando houver erro
-  const handleRetryLoad = () => {
-    loadConversations();
-  };
-
-  // Adicionar função para recarregar manualmente as conversas
+  // Handle manual refresh
   const handleRefresh = async () => {
-    await loadConversations();
-    toast({
-      title: "Atualizado",
-      description: "Lista de conversas atualizada.",
-    });
+    try {
+      setLoading(true);
+      await refreshConversations();
+      toast({
+        title: "Atualizado",
+        description: "Lista de conversas atualizada.",
+      });
+    } catch (error) {
+      console.error("Error refreshing conversations:", error);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  // Exibir informações para depuração
-  console.log("ChatList render - Conversations:", {
-    active: conversations.active.length,
-    waiting: conversations.waiting.length, 
-    bot: conversations.bot.length
-  });
 
   return (
     <div className="h-full flex flex-col overflow-hidden bg-white">
@@ -146,7 +102,7 @@ const ChatList = () => {
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
           <p className="text-red-600 mb-4">{loadError}</p>
           <button 
-            onClick={handleRetryLoad} 
+            onClick={handleRefresh} 
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Tentar novamente

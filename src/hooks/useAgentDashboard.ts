@@ -25,38 +25,69 @@ export const useAgentDashboard = () => {
   
   // Function to refresh the stats
   const refreshStats = useCallback(async () => {
+    if (!currentUser?.id) {
+      console.log('No current user, skipping stats refresh');
+      setLoading(false);
+      return null;
+    }
+    
     try {
       setLoading(true);
+      console.log('Refreshing agent dashboard stats...');
       const data = await fetchAgentDashboardStats();
+      console.log('Stats refreshed:', data);
       setStats(data);
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao carregar estatísticas do painel:", error);
       toast({
         title: "Erro ao carregar dados",
-        description: "Não foi possível carregar as estatísticas do painel. Tente novamente.",
+        description: error.message || "Não foi possível carregar as estatísticas do painel. Tente novamente.",
         variant: "destructive"
       });
-      throw error;
+      return null;
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, currentUser?.id]);
 
   // Get the initial agent status when component mounts
   useEffect(() => {
     const fetchAgentStatus = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data, error } = await supabase
-            .from('agent_statuses')
-            .select('status')
-            .eq('id', user.id)
-            .single();
+        if (!currentUser?.id) {
+          console.log('No current user, skipping status fetch');
+          return;
+        }
+        
+        console.log('Fetching agent status for user:', currentUser.id);
+        
+        const { data, error } = await supabase
+          .from('agent_statuses')
+          .select('status')
+          .eq('id', currentUser.id)
+          .single();
 
-          if (error) throw error;
-          
+        if (error) {
+          console.log('Error fetching agent status:', error.message);
+          if (error.code === 'PGRST116') { // record not found
+            // Create a new agent status record
+            const { error: insertError } = await supabase
+              .from('agent_statuses')
+              .insert({
+                id: currentUser.id,
+                status: 'online',
+                active_chats: 0,
+                last_active_at: new Date().toISOString()
+              });
+              
+            if (insertError) {
+              console.error('Error creating agent status:', insertError);
+            } else {
+              setAgentStatus('online');
+            }
+          }
+        } else if (data) {
           // If the user is a master admin, they should start as offline by default
           if (currentUser && currentUser.role === 'master') {
             setAgentStatus('offline');
@@ -72,26 +103,27 @@ export const useAgentDashboard = () => {
     fetchAgentStatus();
   }, [currentUser]);
   
-  // Usar realtime para atualização de estatísticas
+  // Use realtime for stats updates
   useEffect(() => {
     // Load stats on component mount
-    refreshStats().catch(console.error);
+    refreshStats();
     
-    // Configurar assinaturas realtime para atualização das estatísticas
+    // Set up realtime subscriptions for stats updates
     const ids = realtimeService.subscribeToTables(
       ['conversations', 'messages', 'agent_statuses'],
       '*',
       async (payload) => {
-        // Atualizar estatísticas somente quando necessário
-        if (
-          (payload.table === 'conversations') ||
-          (payload.new && 
-           typeof payload.new === 'object' && 
+        // Only update stats when necessary
+        const shouldRefresh = 
+          payload.table === 'conversations' ||
+          (payload.table === 'agent_statuses' && 
+           payload.new && 
            'id' in payload.new && 
            currentUser?.id && 
-           payload.new.id === currentUser.id)
-        ) {
-          console.log('Atualização realtime para estatísticas do dashboard');
+           payload.new.id === currentUser.id);
+        
+        if (shouldRefresh) {
+          console.log('Realtime update triggered for agent dashboard stats');
           await refreshStats();
         }
       }
@@ -100,30 +132,46 @@ export const useAgentDashboard = () => {
     setChannelIds(ids);
     
     return () => {
-      // Limpar subscrições realtime
+      // Clean up realtime subscriptions
       realtimeService.unsubscribeAll(ids);
     };
   }, [refreshStats, currentUser?.id]);
 
-  // Função para quando o agente atualiza seu status
+  // Function for when the agent updates their status
   const updateAgentStatus = async (value: string) => {
+    if (!currentUser?.id) {
+      console.log('No current user, skipping status update');
+      return;
+    }
+    
     const newStatus = value as 'online' | 'offline' | 'break';
     setAgentStatus(newStatus);
     
     try {
       // Update agent status in database
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('agent_statuses')
-          .upsert({
-            id: user.id,
-            status: newStatus,
-            last_active_at: new Date().toISOString()
-          });
+      const { error } = await supabase
+        .from('agent_statuses')
+        .upsert({
+          id: currentUser.id,
+          status: newStatus,
+          last_active_at: new Date().toISOString()
+        });
+        
+      if (error) {
+        console.error("Error updating agent status:", error);
+        toast({
+          title: "Erro ao atualizar status",
+          description: error.message || "Não foi possível atualizar seu status. Tente novamente.",
+          variant: "destructive"
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating agent status:", error);
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message || "Não foi possível atualizar seu status. Tente novamente.",
+        variant: "destructive"
+      });
     }
   };
 

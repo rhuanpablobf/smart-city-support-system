@@ -5,6 +5,7 @@ import { useChatActions } from './useChatActions';
 import { fetchAgentConversations } from '@/services/agent';
 import { realtimeService } from '@/services/realtime/realtimeService';
 import { useAuth } from '@/contexts/auth';
+import { useToast } from '@/components/ui/use-toast';
 
 interface ChatProviderProps {
   children: ReactNode;
@@ -26,6 +27,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
   
   const [channelIds, setChannelIds] = useState<string[]>([]);
   const { currentUser } = useAuth();
+  const { toast } = useToast();
 
   // Load conversations from API - only once on initial mount
   const loadConversations = useCallback(async () => {
@@ -36,7 +38,9 @@ export function ChatProvider({ children }: ChatProviderProps) {
       }
 
       console.log("Loading conversations for user:", currentUser.id);
+      setLoading(true);
       const data = await fetchAgentConversations(currentUser.id);
+      
       console.log("Conversations loaded:", {
         active: data.active?.length || 0,
         waiting: data.waiting?.length || 0,
@@ -50,10 +54,17 @@ export function ChatProvider({ children }: ChatProviderProps) {
       });
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading conversations:', error);
+      toast({
+        title: "Erro ao carregar conversas",
+        description: error.message || "Não foi possível carregar as conversas. Tente novamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  }, [currentUser, setConversations]);
+  }, [currentUser, setConversations, setLoading, toast]);
 
   useEffect(() => {
     // Clean up function to unsubscribe all channels
@@ -111,6 +122,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     startNewChat,
     transferChat,
     closeChat,
+    refreshConversations: loadConversations
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;

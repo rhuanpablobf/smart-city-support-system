@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-// Define uma tipagem mais precisa para o payload baseado no que o Supabase retorna
+// Define a more precise type for the payload based on what Supabase returns
 type PostgresChangesPayload = RealtimePostgresChangesPayload<{
   [key: string]: any;
 }>;
@@ -14,7 +14,7 @@ class RealtimeService {
   private channels: Record<string, RealtimeChannel> = {};
   
   /**
-   * Inscreve-se em atualizações em tempo real para uma tabela específica
+   * Subscribe to realtime updates for a specific table
    */
   subscribeToTable(
     table: string, 
@@ -26,32 +26,28 @@ class RealtimeService {
     console.log(`Setting up realtime subscription for ${table} (${event})`);
     
     try {
-      // Cria o canal com a sintaxe correta para o Supabase v2
+      // Create channel with correct syntax for Supabase v2
       const channel = supabase.channel(channelId);
       
-      // Inscreve-se nas mudanças do postgres com a sintaxe API correta
-      // Use type assertion para evitar o erro de tipo
+      // Subscribe to postgres changes with correct API syntax
       channel
         .on(
-          'postgres_changes' as any,
+          'postgres_changes',
           { 
             event, 
             schema: 'public',
             table
           },
-          (payload: PostgresChangesPayload) => {
+          (payload) => {
             console.log(`Realtime update for ${table} (${event}):`, payload);
-            
-            // Não precisamos mais converter o payload aqui,
-            // apenas passamos o payload diretamente para o callback
-            callback(payload);
+            callback(payload as PostgresChangesPayload);
           }
         )
         .subscribe((status) => {
           console.log(`Realtime subscription to ${table} (${event}): ${status}`);
         });
       
-      // Armazena a referência do canal para gerenciamento futuro
+      // Store channel reference for future management
       this.channels[channelId] = channel;
     } catch (error) {
       console.error(`Error setting up realtime subscription for ${table}:`, error);
@@ -61,7 +57,7 @@ class RealtimeService {
   }
   
   /**
-   * Inscreve-se em múltiplas tabelas de uma só vez
+   * Subscribe to multiple tables at once
    */
   subscribeToTables(
     tables: string[],
@@ -83,7 +79,7 @@ class RealtimeService {
   }
   
   /**
-   * Cancela a inscrição de um canal específico
+   * Unsubscribe from a specific channel
    */
   unsubscribe(channelId: string): void {
     if (this.channels[channelId]) {
@@ -98,14 +94,14 @@ class RealtimeService {
   }
   
   /**
-   * Cancela a inscrição de múltiplos canais
+   * Unsubscribe from multiple channels
    */
   unsubscribeAll(channelIds: string[]): void {
     channelIds.forEach(id => this.unsubscribe(id));
   }
   
   /**
-   * Fecha todos os canais ativos
+   * Close all active channels
    */
   closeAll(): void {
     Object.keys(this.channels).forEach(id => this.unsubscribe(id));

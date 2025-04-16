@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Save, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
-import { ServiceList } from './ServiceList';
+import { Plus, Loader2 } from 'lucide-react';
+import { DepartmentCard } from './DepartmentCard';
 import {
   Dialog,
   DialogContent,
@@ -22,17 +22,23 @@ type DepartmentListProps = {
   departments: Department[];
   onAddDepartment: (department: Partial<Department>) => void;
   onDeleteDepartment: (id: string) => void;
+  isLoading: boolean;
+  isAddingDepartment: boolean;
 };
 
-export const DepartmentList = ({ departments = [], onAddDepartment, onDeleteDepartment }: DepartmentListProps) => {
+export const DepartmentList = ({ 
+  departments = [], 
+  onAddDepartment, 
+  onDeleteDepartment,
+  isLoading,
+  isAddingDepartment
+}: DepartmentListProps) => {
   const [newDepartment, setNewDepartment] = useState<Partial<Department>>({ name: '', description: '' });
   const [openDialog, setOpenDialog] = useState(false);
   const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({});
 
   const handleAddDepartment = () => {
     onAddDepartment(newDepartment);
-    setNewDepartment({ name: '', description: '' });
-    setOpenDialog(false);
   };
 
   const toggleDeptExpand = (deptId: string) => {
@@ -41,6 +47,13 @@ export const DepartmentList = ({ departments = [], onAddDepartment, onDeleteDepa
       [deptId]: !prev[deptId],
     }));
   };
+  
+  // Reset form values when dialog closes
+  useEffect(() => {
+    if (!openDialog) {
+      setNewDepartment({ name: '', description: '' });
+    }
+  }, [openDialog]);
 
   return (
     <div className="space-y-4">
@@ -68,6 +81,7 @@ export const DepartmentList = ({ departments = [], onAddDepartment, onDeleteDepa
                   value={newDepartment.name}
                   onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
                   placeholder="Ex: Secretaria de Saúde"
+                  disabled={isAddingDepartment}
                 />
               </div>
               <div className="space-y-2">
@@ -77,19 +91,37 @@ export const DepartmentList = ({ departments = [], onAddDepartment, onDeleteDepa
                   value={newDepartment.description || ''}
                   onChange={(e) => setNewDepartment({ ...newDepartment, description: e.target.value })}
                   placeholder="Descrição da secretaria e seus serviços"
+                  disabled={isAddingDepartment}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancelar</Button>
-              <Button onClick={handleAddDepartment} disabled={!newDepartment.name}>Adicionar</Button>
+              <Button variant="outline" onClick={() => setOpenDialog(false)} disabled={isAddingDepartment}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAddDepartment} disabled={!newDepartment.name || isAddingDepartment}>
+                {isAddingDepartment ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Adicionando...
+                  </>
+                ) : (
+                  'Adicionar'
+                )}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
       <div className="space-y-2">
-        {departments.length === 0 ? (
+        {isLoading ? (
+          <Card>
+            <CardContent className="pt-4 flex items-center justify-center h-20">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : departments.length === 0 ? (
           <Card>
             <CardContent className="pt-4 text-center text-muted-foreground">
               Nenhuma secretaria cadastrada. Adicione uma nova para começar.
@@ -97,32 +129,16 @@ export const DepartmentList = ({ departments = [], onAddDepartment, onDeleteDepa
           </Card>
         ) : (
           departments.map((dept) => (
-            <Card key={dept.id} className="border">
-              <CardHeader className="p-4 pb-2">
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center cursor-pointer" onClick={() => toggleDeptExpand(dept.id)}>
-                    {expandedDepts[dept.id] ? (
-                      <ChevronDown className="h-4 w-4 mr-2" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 mr-2" />
-                    )}
-                    <CardTitle className="text-lg">{dept.name}</CardTitle>
-                  </div>
-                  <Button variant="ghost" onClick={() => onDeleteDepartment(dept.id)}>
-                    <Trash2 className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </div>
-                {dept.description && <p className="text-sm text-muted-foreground">{dept.description}</p>}
-              </CardHeader>
-              {expandedDepts[dept.id] && (
-                <CardContent className="pt-0">
-                  <ServiceList departmentId={dept.id} />
-                </CardContent>
-              )}
-            </Card>
+            <DepartmentCard
+              key={dept.id}
+              department={dept}
+              expanded={!!expandedDepts[dept.id]}
+              onToggleExpand={() => toggleDeptExpand(dept.id)}
+              onDeleteDepartment={() => onDeleteDepartment(dept.id)}
+            />
           ))
         )}
       </div>
     </div>
   );
-};
+}

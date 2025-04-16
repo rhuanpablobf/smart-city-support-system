@@ -1,21 +1,22 @@
 
-import { ChatMessage, Conversation } from '@/types';
+import { Conversation, ChatMessage } from '@/types';
 
-export interface ConversationsData {
+export type ConversationsData = {
   active: Conversation[];
   waiting: Conversation[];
   bot: Conversation[];
-}
+};
 
-export interface ChatContextType {
+export type ChatContextType = {
   conversations: ConversationsData;
   setConversations: (data: ConversationsData) => void;
   currentConversation: Conversation | null;
   messages: ChatMessage[];
   loading: boolean;
+  selectConversation: (conversationId: string) => Promise<void>;
   sendMessage: (content: string, attachments?: File[]) => Promise<void>;
-  selectConversation: (conversationId: string) => void;
   startNewChat: () => void;
   transferChat: (agentId: string) => void;
-  closeChat: () => void;
-}
+  closeChat: () => Promise<void>;
+  refreshConversations: () => Promise<any>;
+};

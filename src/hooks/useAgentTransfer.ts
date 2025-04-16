@@ -23,7 +23,7 @@ export const useAgentTransfer = (conversationId: string | null) => {
     try {
       console.log(`Transferindo conversa ${conversationId} para atendimento humano`);
       
-      // Verificar primeiro se a conversa existe
+      // First check if the conversation exists and its current status
       const { data: conversationCheck, error: checkError } = await supabase
         .from('conversations')
         .select('id, status')
@@ -32,10 +32,10 @@ export const useAgentTransfer = (conversationId: string | null) => {
         
       if (checkError) {
         console.error("Erro ao verificar conversa:", checkError);
-        throw new Error("Conversa não encontrada");
+        throw new Error(checkError.message);
       }
       
-      if (conversationCheck.status === 'waiting' || conversationCheck.status === 'active') {
+      if (conversationCheck && (conversationCheck.status === 'waiting' || conversationCheck.status === 'active')) {
         toast({
           title: "Transferência já solicitada",
           description: "Esta conversa já está em atendimento ou na fila de espera.",
@@ -45,8 +45,8 @@ export const useAgentTransfer = (conversationId: string | null) => {
         return;
       }
       
-      // Atualizar o status da conversa para 'waiting' para um atendente a pegar
-      const { error } = await supabase
+      // Update conversation status to 'waiting' for an agent to pick it up
+      const { error: updateError } = await supabase
         .from('conversations')
         .update({ 
           status: 'waiting',
@@ -54,9 +54,12 @@ export const useAgentTransfer = (conversationId: string | null) => {
         })
         .eq('id', conversationId);
         
-      if (error) throw error;
+      if (updateError) {
+        console.error("Erro ao atualizar status da conversa:", updateError);
+        throw new Error(updateError.message);
+      }
       
-      // Adicionar uma mensagem de sistema indicando a transferência
+      // Add a system message indicating the transfer
       const { error: messageError } = await supabase
         .from('messages')
         .insert({
@@ -67,20 +70,23 @@ export const useAgentTransfer = (conversationId: string | null) => {
           timestamp: new Date().toISOString()
         });
         
-      if (messageError) throw messageError;
+      if (messageError) {
+        console.error("Erro ao adicionar mensagem do sistema:", messageError);
+        throw new Error(messageError.message);
+      }
       
       toast({
         title: "Transferência solicitada",
         description: "Você será atendido por um agente em breve.",
       });
       
-      // Redirecionar para o chat com o mesmo ID de conversa
+      // Redirect to chat with the same conversation ID
       navigate(`/chat?conversation=${conversationId}&waiting=true`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao transferir para atendente:", error);
       toast({
         title: "Erro ao transferir",
-        description: "Não foi possível solicitar atendimento humano. Tente novamente.",
+        description: error.message || "Não foi possível solicitar atendimento humano. Tente novamente.",
         variant: "destructive"
       });
     } finally {

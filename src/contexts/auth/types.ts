@@ -1,26 +1,12 @@
 
-import { User, UserRole } from '@/types';
+import { User } from '@/types';
 
-export interface AuthContextType {
+export type AuthContextType = {
   currentUser: User | null;
-  setCurrentUser: (user: User | null) => void;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<User | null>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateUser?: (userData: Partial<User>) => Promise<User>;
-  isAuthenticated: boolean;
-  userRole: UserRole | null;
-  hasPermission: (requiredRole: UserRole) => boolean;
-}
-
-export interface AuthProviderProps {
-  children: React.ReactNode;
-}
-
-export const ROLE_HIERARCHY: { [key in UserRole]: number } = {
-  'master': 4,
-  'admin': 3,
-  'manager': 2,
-  'agent': 1,
-  'user': 0,
+  register: (email: string, password: string, name: string, role: string) => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<User>;
+  loading: boolean;
+  error: string | null;
 };

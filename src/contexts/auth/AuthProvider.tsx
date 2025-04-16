@@ -21,23 +21,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // First set up the auth state listener before checking for an existing session
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         console.log("AuthState change event:", event, "session exists:", !!session);
 
         if (!isMounted) return;
         
         if (event === 'SIGNED_IN' && session?.user) {
-          // We'll handle profile fetching separately to avoid deadlocks
-          setTimeout(async () => {
-            if (!isMounted) return;
+          try {
+            // Load user profile after sign in
             await loadUserProfile(
               session.user.id,
               authService.setCurrentUser
             );
-          }, 0);
+          } catch (error) {
+            console.error("Error loading user profile after sign in:", error);
+          }
         } else if (event === 'SIGNED_OUT') {
           console.log("Usuário desconectado, limpando estado");
           authService.setCurrentUser(null);
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log("Token refreshed successfully");
         }
       }
     );
@@ -45,20 +48,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Then check for an existing session
     const getSession = async () => {
       try {
+        console.log("Checking for existing session...");
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Error getting session:", error);
           setSessionError(error);
+          if (isMounted) {
+            toast({
+              title: "Erro de autenticação",
+              description: error.message || "Ocorreu um erro ao verificar sua sessão",
+              variant: "destructive"
+            });
+          }
           return;
         }
         
         if (session?.user && isMounted) {
           console.log("Sessão existente encontrada, buscando perfil do usuário");
-          await loadUserProfile(
-            session.user.id,
-            authService.setCurrentUser
-          );
+          try {
+            await loadUserProfile(
+              session.user.id,
+              authService.setCurrentUser
+            );
+          } catch (error) {
+            console.error("Error loading user profile from existing session:", error);
+          }
         } else {
           console.log("Nenhuma sessão encontrada ou componente desmontado");
         }
@@ -66,6 +81,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error('Error checking authentication status:', error);
         if (isMounted) {
           setSessionError(error as Error);
+          toast({
+            title: "Erro de autenticação",
+            description: "Ocorreu um erro ao verificar sua sessão",
+            variant: "destructive"
+          });
         }
       } finally {
         if (isMounted) {
@@ -88,6 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     const refreshInterval = setInterval(async () => {
       try {
+        console.log("Refreshing session token...");
         // Refresh da sessão para evitar expiração
         const { error } = await supabase.auth.refreshSession();
         if (error) {
@@ -105,6 +126,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       if (!authService.currentUser) throw new Error("No user is currently logged in");
 
+      console.log("Updating user profile:", userData);
+      
       // Update the user profile in Supabase
       const { error } = await supabase
         .from('profiles')
@@ -118,11 +141,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         })
         .eq('id', authService.currentUser.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating profile:", error);
+        throw error;
+      }
 
       // Update local state
       const updatedUser = { ...authService.currentUser, ...userData };
       authService.setCurrentUser(updatedUser);
+      
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram atualizadas com sucesso",
+      });
       
       return updatedUser;
     } catch (error: any) {
@@ -139,7 +170,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     ...authService,
     updateUser,
-    loading: authService.loading || profileLoading || !sessionChecked
+    loading: authService.loading || profileLoading || !sessionChecked,
+    error: sessionError?.message
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

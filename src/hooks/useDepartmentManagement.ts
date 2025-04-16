@@ -8,28 +8,37 @@ import { Department } from '@/types';
 export function useDepartmentManagement() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [isAddingDepartment, setIsAddingDepartment] = useState(false);
 
   // Fetch departments
-  const { data: departments = [], isLoading } = useQuery({
+  const { data: departments = [], isLoading, error: fetchError, refetch } = useQuery({
     queryKey: ['departments'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('departments')
-        .select('*');
+        .select('*')
+        .order('name');
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching departments:", error);
+        throw error;
+      }
 
       return data.map(dept => ({
         id: dept.id,
         name: dept.name,
         description: dept.description || '',
-      }));
+      })) as Department[];
     }
   });
 
   // Add department mutation
   const addDepartmentMutation = useMutation({
     mutationFn: async (newDept: Partial<Department>) => {
+      setIsAddingDepartment(true);
+      
+      console.log("Adding department:", newDept);
+      
       const { data, error } = await supabase
         .from('departments')
         .insert({
@@ -38,7 +47,12 @@ export function useDepartmentManagement() {
         })
         .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error in insert operation:", error);
+        throw error;
+      }
+      
+      console.log("Department added successfully:", data);
       return data[0];
     },
     onSuccess: () => {
@@ -47,14 +61,17 @@ export function useDepartmentManagement() {
         title: "Secretaria adicionada",
         description: "A nova secretaria foi adicionada com sucesso."
       });
+      setIsAddingDepartment(false);
+      refetch(); // Manually refetch to ensure latest data
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error adding department:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível adicionar a secretaria. Tente novamente.",
+        description: error.message || "Não foi possível adicionar a secretaria. Tente novamente.",
         variant: "destructive"
       });
+      setIsAddingDepartment(false);
     }
   });
 
@@ -75,12 +92,13 @@ export function useDepartmentManagement() {
         title: "Secretaria removida",
         description: "A secretaria foi removida com sucesso."
       });
+      refetch(); // Manually refetch to ensure latest data
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error deleting department:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível remover a secretaria. Tente novamente.",
+        description: error.message || "Não foi possível remover a secretaria. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -97,7 +115,10 @@ export function useDepartmentManagement() {
   return {
     departments,
     isLoading,
+    isAddingDepartment,
+    fetchError,
     handleAddDepartment,
-    handleDeleteDepartment
+    handleDeleteDepartment,
+    refetch
   };
 }
