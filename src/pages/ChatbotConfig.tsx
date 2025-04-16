@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Save } from 'lucide-react';
@@ -25,7 +25,9 @@ const ChatbotConfig = () => {
   const {
     departments,
     handleAddDepartment,
-    handleDeleteDepartment
+    handleDeleteDepartment,
+    isLoading, // Needed for DepartmentList
+    isAdding: isAddingDepartment // Needed for DepartmentList
   } = useDepartmentManagement();
 
   return (
@@ -60,6 +62,8 @@ const ChatbotConfig = () => {
             departments={departments} 
             onAddDepartment={handleAddDepartment}
             onDeleteDepartment={handleDeleteDepartment}
+            isLoading={isLoading}
+            isAddingDepartment={isAddingDepartment}
           />
         </TabsContent>
         

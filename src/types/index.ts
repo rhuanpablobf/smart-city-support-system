@@ -1,3 +1,4 @@
+
 export type UserRole = 'master' | 'admin' | 'manager' | 'agent' | 'user';
 
 export interface User {
@@ -84,6 +85,7 @@ export interface UserFormValues {
   status: 'active' | 'inactive';
   maxSimultaneousChats: number;
   serviceIds?: string[];
+  password?: string; // Add password field
 }
 
 export interface ServiceAttendanceData {

@@ -35,7 +35,7 @@ export const realtimeService = {
             event: event,
             schema: 'public',
             table: tableName
-          },
+          } as any, // Using type assertion to bypass the type error
           (payload) => {
             console.log(`Realtime update for ${tableName}:`, payload);
             callback(payload as unknown as PayloadEvent);

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -66,7 +67,7 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
     fetchMessages();
 
     // Configurar inscrição em tempo real para novas mensagens
-    const subscriptionIds = realtimeService.subscribeToTable('messages', 'INSERT', (payload) => {
+    const subscriptionIds = realtimeService.subscribeToTables(['messages'], 'INSERT', (payload) => {
       // Check if payload has the new property and it matches our conversation_id
       if (payload.new && 
           'conversation_id' in payload.new && 
@@ -93,7 +94,7 @@ const ActiveChatState: React.FC<ActiveChatStateProps> = ({ conversationId }) => 
     });
     
     // Inscrição para atualizações de conversa (quando um agente aceita o atendimento)
-    const conversationSubscriptionIds = realtimeService.subscribeToTable('conversations', 'UPDATE', (payload) => {
+    const conversationSubscriptionIds = realtimeService.subscribeToTables(['conversations'], 'UPDATE', (payload) => {
       if (payload.new && 
           'id' in payload.new && 
           payload.new.id === conversationId &&

@@ -55,7 +55,7 @@ export const useConversationStatus = (conversationId: string | null) => {
     if (conversationId) {
       console.log("Setting up realtime subscription for conversation:", conversationId);
       
-      const subscriptionIds = realtimeService.subscribeToTable('conversations', 'UPDATE', async (payload) => {
+      const subscriptionIds = realtimeService.subscribeToTables(['conversations'], 'UPDATE', async (payload) => {
         if (payload.new && 
             'id' in payload.new && 
             payload.new.id === conversationId) {

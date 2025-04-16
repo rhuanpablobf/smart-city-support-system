@@ -34,8 +34,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 email: authSession.user.email || '',
                 name: profile.name,
                 role: profile.role,
-                status: profile.status || 'active',
-                maxSimultaneousChats: profile.max_simultaneous_chats
+                status: (profile.status || 'active') as 'active' | 'inactive',
+                maxSimultaneousChats: profile.max_simultaneous_chats,
+                avatar: profile.avatar || '',
+                department: null,
+                department_id: profile.department_id
               });
               setIsAuthenticated(true);
               setUserRole(profile.role);
@@ -66,8 +69,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             email: data.session.user.email || '',
             name: profile.name,
             role: profile.role,
-            status: profile.status || 'active',
-            maxSimultaneousChats: profile.max_simultaneous_chats
+            status: (profile.status || 'active') as 'active' | 'inactive',
+            maxSimultaneousChats: profile.max_simultaneous_chats,
+            avatar: profile.avatar || '',
+            department: null,
+            department_id: profile.department_id
           });
           setIsAuthenticated(true);
           setUserRole(profile.role);
