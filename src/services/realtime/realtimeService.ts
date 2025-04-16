@@ -35,7 +35,7 @@ export const realtimeService = {
             event: event,
             schema: 'public',
             table: tableName
-          } as any, // Using type assertion to bypass the type error
+          },
           (payload) => {
             console.log(`Realtime update for ${tableName}:`, payload);
             callback(payload as unknown as PayloadEvent);
@@ -55,9 +55,10 @@ export const realtimeService = {
    */
   unsubscribeAll: (channelIds: string[]) => {
     channelIds.forEach((id) => {
-      supabase.removeChannel(
-        supabase.getChannels().find((c) => c.topic === id)!
-      );
+      const channel = supabase.getChannels().find((c) => c.topic === id);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     });
   }
 };

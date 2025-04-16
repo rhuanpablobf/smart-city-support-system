@@ -44,20 +44,77 @@ export const useDashboardData = (): UseDashboardDataReturn => {
       
       console.log("Loading dashboard data...");
       
-      // Fetch all dashboard data in parallel
-      const [stats, deptStats, dailyData, agentData] = await Promise.all([
+      // Fetch all dashboard data in parallel with timeouts to prevent blocking
+      const statsPromise = Promise.race([
         fetchDashboardStats(),
-        fetchDepartmentStats(),
-        fetchDailyStats(),
-        fetchAgentPerformance()
+        new Promise<DashboardStats>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout fetching stats')), 10000)
+        )
       ]);
+      
+      const deptStatsPromise = Promise.race([
+        fetchDepartmentStats(),
+        new Promise<DepartmentStat[]>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout fetching department stats')), 10000)
+        )
+      ]);
+      
+      const dailyStatsPromise = Promise.race([
+        fetchDailyStats(),
+        new Promise<DailyStat[]>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout fetching daily stats')), 10000)
+        )
+      ]);
+      
+      const agentStatsPromise = Promise.race([
+        fetchAgentPerformance(),
+        new Promise<AgentPerformance[]>((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout fetching agent performance')), 10000)
+        )
+      ]);
+      
+      // Use Promise.allSettled to handle each promise independently
+      const results = await Promise.allSettled([
+        statsPromise,
+        deptStatsPromise,
+        dailyStatsPromise,
+        agentStatsPromise
+      ]);
+      
+      // Process results
+      if (results[0].status === 'fulfilled') {
+        setDashboardStats(results[0].value);
+      } else {
+        console.error("Error loading stats:", results[0].reason);
+      }
+      
+      if (results[1].status === 'fulfilled') {
+        setDepartmentStats(results[1].value);
+      } else {
+        console.error("Error loading department stats:", results[1].reason);
+      }
+      
+      if (results[2].status === 'fulfilled') {
+        setDailyStats(results[2].value);
+      } else {
+        console.error("Error loading daily stats:", results[2].reason);
+      }
+      
+      if (results[3].status === 'fulfilled') {
+        setAgentPerformance(results[3].value);
+      } else {
+        console.error("Error loading agent performance:", results[3].reason);
+      }
       
       console.log("Dashboard data loaded successfully");
       
-      setDashboardStats(stats);
-      setDepartmentStats(deptStats);
-      setDailyStats(dailyData);
-      setAgentPerformance(agentData);
+      if (results.some(result => result.status === 'rejected')) {
+        toast({
+          title: "Aviso",
+          description: "Alguns dados do dashboard não puderam ser carregados. As informações exibidas podem estar incompletas.",
+          variant: "default",
+        });
+      }
     } catch (error: any) {
       console.error("Error loading dashboard data:", error);
       setError(error.message || "Não foi possível carregar os dados do dashboard");

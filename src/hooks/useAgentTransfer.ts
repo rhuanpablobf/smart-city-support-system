@@ -35,6 +35,8 @@ export const useAgentTransfer = (conversationId: string | null) => {
         throw new Error(checkError.message);
       }
       
+      console.log("Current conversation status:", conversationCheck?.status);
+      
       if (conversationCheck && (conversationCheck.status === 'waiting' || conversationCheck.status === 'active')) {
         toast({
           title: "Transferência já solicitada",

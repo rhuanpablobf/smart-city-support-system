@@ -27,7 +27,9 @@ const ChatbotConfig = () => {
     handleAddDepartment,
     handleDeleteDepartment,
     isLoading, 
-    isAddingDepartment // This is the correct property name
+    isAddingDepartment, // Use the correct property name
+    fetchError,
+    refetch
   } = useDepartmentManagement();
 
   return (
@@ -63,7 +65,7 @@ const ChatbotConfig = () => {
             onAddDepartment={handleAddDepartment}
             onDeleteDepartment={handleDeleteDepartment}
             isLoading={isLoading}
-            isAddingDepartment={isAddingDepartment} // Corrected prop name
+            isAddingDepartment={isAddingDepartment} // Use the correct property name
           />
         </TabsContent>
         
@@ -83,4 +85,3 @@ const ChatbotConfig = () => {
 };
 
 export default ChatbotConfig;
-

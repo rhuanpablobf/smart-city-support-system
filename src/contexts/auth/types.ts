@@ -1,9 +1,18 @@
 
 import { User } from '@/types';
 
-export type AuthContextType = {
+// Role hierarchy for permission checks
+export const ROLE_HIERARCHY: Record<string, number> = {
+  'master': 40,
+  'admin': 30,
+  'manager': 20,
+  'agent': 10,
+  'user': 0
+};
+
+export interface AuthContextType {
   currentUser: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   register: (email: string, password: string, name: string, role: string) => Promise<any>;
   updateUser: (userData: Partial<User>) => Promise<User>;
@@ -13,13 +22,4 @@ export type AuthContextType = {
   userRole: string | null;
   hasPermission: (requiredRole: string) => boolean;
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
-};
-
-// Add ROLE_HIERARCHY to define role levels
-export const ROLE_HIERARCHY: Record<string, number> = {
-  master: 4,
-  admin: 3,
-  manager: 2,
-  agent: 1,
-  user: 0
-};
+}

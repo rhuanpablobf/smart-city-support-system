@@ -24,6 +24,7 @@ export function useDepartmentManagement() {
         throw error;
       }
 
+      console.log("Departments fetched:", data?.length || 0);
       return data.map(dept => ({
         id: dept.id,
         name: dept.name,

@@ -7,16 +7,23 @@ import { applyCommonFilters } from './utils';
  * Fetch dashboard statistics from Supabase with filters
  */
 export const fetchDashboardStats = async (filters?: FilterOptions): Promise<DashboardStats> => {
+  console.log("Fetching dashboard stats with filters:", filters);
+  
   try {
-    // Primeiro, vamos buscar a contagem exata de conversações de bot
+    // First, let's fetch the count of bot conversations
     const { count: botCount, error: botCountError } = await supabase
       .from('conversations')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'bot');
     
-    if (botCountError) throw botCountError;
+    if (botCountError) {
+      console.error("Error fetching bot count:", botCountError);
+      throw botCountError;
+    }
     
-    // Agora, vamos aplicar os filtros para todas as conversas
+    console.log("Bot conversations count:", botCount);
+    
+    // Now, let's apply the filters for all conversations
     let query = supabase.from('conversations').select('*');
     
     query = applyCommonFilters(query, filters);
@@ -24,11 +31,16 @@ export const fetchDashboardStats = async (filters?: FilterOptions): Promise<Dash
     // Get all conversations with applied filters
     const { data: conversations, error: conversationsError } = await query;
 
-    if (conversationsError) throw conversationsError;
+    if (conversationsError) {
+      console.error("Error fetching conversations:", conversationsError);
+      throw conversationsError;
+    }
+    
+    console.log("Total conversations count:", conversations?.length || 0);
     
     const totalAttendances = conversations?.length || 0;
     
-    // Get bot attendances - usando a contagem exata obtida anteriormente
+    // Get bot attendances - using the exact count obtained earlier
     const botAttendances = botCount || 0;
     
     // Calculate bot percentage
@@ -38,8 +50,8 @@ export const fetchDashboardStats = async (filters?: FilterOptions): Promise<Dash
     let surveyQuery = supabase.from('satisfaction_surveys').select('rating');
     
     // We need to join surveys with conversations to apply the same filters
-    if (filters?.department && filters.department !== 'all' ||
-        filters?.service && filters.service !== 'all' ||
+    if ((filters?.department && filters.department !== 'all') ||
+        (filters?.service && filters.service !== 'all') ||
         filters?.period === 'custom' || filters?.days) {
       
       // First get the IDs of the filtered conversations
@@ -51,7 +63,12 @@ export const fetchDashboardStats = async (filters?: FilterOptions): Promise<Dash
     
     const { data: surveys, error: surveysError } = await surveyQuery;
       
-    if (surveysError) throw surveysError;
+    if (surveysError) {
+      console.error("Error fetching surveys:", surveysError);
+      throw surveysError;
+    }
+    
+    console.log("Satisfaction surveys count:", surveys?.length || 0);
     
     // Calculate satisfaction rate
     const satisfactionRate = surveys && surveys.length > 0 
@@ -62,8 +79,8 @@ export const fetchDashboardStats = async (filters?: FilterOptions): Promise<Dash
     let messagesQuery = supabase.from('messages').select('conversation_id, timestamp');
     
     // Apply the same filters by conversation IDs
-    if (filters?.department && filters.department !== 'all' ||
-        filters?.service && filters.service !== 'all' ||
+    if ((filters?.department && filters.department !== 'all') ||
+        (filters?.service && filters.service !== 'all') ||
         filters?.period === 'custom' || filters?.days) {
       
       // First get the IDs of the filtered conversations
@@ -77,7 +94,12 @@ export const fetchDashboardStats = async (filters?: FilterOptions): Promise<Dash
     
     const { data: messages, error: messagesError } = await messagesQuery;
     
-    if (messagesError) throw messagesError;
+    if (messagesError) {
+      console.error("Error fetching messages:", messagesError);
+      throw messagesError;
+    }
+    
+    console.log("Messages count:", messages?.length || 0);
     
     // Group messages by conversation
     const conversationMessages: Record<string, {timestamps: Date[]}> = {};
@@ -107,13 +129,17 @@ export const fetchDashboardStats = async (filters?: FilterOptions): Promise<Dash
     
     const avgAttendanceTime = responseCount > 0 ? parseFloat((totalResponseTime / responseCount).toFixed(1)) : 0;
     
-    return {
+    const result = {
       totalAttendances,
       avgAttendanceTime,
       satisfactionRate,
       botAttendances,
       botPercentage
     };
+    
+    console.log("Dashboard stats result:", result);
+    
+    return result;
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
     return {
