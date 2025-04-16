@@ -30,7 +30,7 @@ export const realtimeService = {
       const channel = supabase
         .channel(`table:${tableName}`)
         .on(
-          'postgres_changes',
+          'postgres_changes' as any,
           {
             event: event,
             schema: 'public',

@@ -1,4 +1,3 @@
-
 import React, { ReactNode, useState, useCallback, useEffect } from 'react';
 import { AuthContext } from './AuthContext';
 import { AuthContextType, ROLE_HIERARCHY } from './types';
@@ -110,7 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setupAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -133,6 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       console.log("Login Supabase bem-sucedido", data.user?.id);
       // Auth state change listener will update the user state
+      return null; // Return null as the user profile will be set by the auth listener
       
     } catch (error: any) {
       console.error("Erro no processo de login:", error);
