@@ -17,7 +17,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     setConversations,
     currentConversation,
     messages,
-    loading,
+    loading: actionsLoading,
     selectConversation,
     startNewChat,
     sendMessage,
@@ -25,6 +25,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     closeChat
   } = useChatActions();
   
+  const [loading, setLoading] = useState<boolean>(false);
   const [channelIds, setChannelIds] = useState<string[]>([]);
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -64,7 +65,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, setConversations, setLoading, toast]);
+  }, [currentUser, setConversations, toast]);
 
   useEffect(() => {
     // Clean up function to unsubscribe all channels
@@ -116,7 +117,7 @@ export function ChatProvider({ children }: ChatProviderProps) {
     setConversations,
     currentConversation,
     messages,
-    loading,
+    loading: loading || actionsLoading, // Combine loading states
     sendMessage,
     selectConversation,
     startNewChat,

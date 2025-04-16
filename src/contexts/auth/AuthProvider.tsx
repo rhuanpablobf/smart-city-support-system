@@ -1,178 +1,220 @@
-
-import React, { useState, useEffect } from 'react';
-import { User } from '@/types';
+import React, { ReactNode, useState, useCallback, useEffect } from 'react';
+import AuthContext from './AuthContext';
+import { AuthContextType, ROLE_HIERARCHY } from './types';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from "@/components/ui/use-toast";
-import { AuthContext } from './AuthContext';
-import { useAuthService } from './useAuthService';
-import { useProfileData } from './hooks/useProfileData';
+import { User } from '@/types';
+import { useToast } from '@/components/ui/use-toast';
 
-// Auth provider component
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const authService = useAuthService();
-  const { loadUserProfile, loading: profileLoading } = useProfileData();
-  const [sessionChecked, setSessionChecked] = useState(false);
-  const [sessionError, setSessionError] = useState<Error | null>(null);
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
-    console.log("AuthProvider - Inicializando e verificando sessão");
-    let isMounted = true;
+    const session = supabase.auth.getSession();
 
-    // First set up the auth state listener before checking for an existing session
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("AuthState change event:", event, "session exists:", !!session);
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.session.user.id)
+          .single();
 
-        if (!isMounted) return;
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            // Load user profile after sign in
-            await loadUserProfile(
-              session.user.id,
-              authService.setCurrentUser
-            );
-          } catch (error) {
-            console.error("Error loading user profile after sign in:", error);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          console.log("Usuário desconectado, limpando estado");
-          authService.setCurrentUser(null);
-        } else if (event === 'TOKEN_REFRESHED') {
-          console.log("Token refreshed successfully");
-        }
-      }
-    );
-
-    // Then check for an existing session
-    const getSession = async () => {
-      try {
-        console.log("Checking for existing session...");
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error("Error getting session:", error);
-          setSessionError(error);
-          if (isMounted) {
-            toast({
-              title: "Erro de autenticação",
-              description: error.message || "Ocorreu um erro ao verificar sua sessão",
-              variant: "destructive"
-            });
-          }
-          return;
-        }
-        
-        if (session?.user && isMounted) {
-          console.log("Sessão existente encontrada, buscando perfil do usuário");
-          try {
-            await loadUserProfile(
-              session.user.id,
-              authService.setCurrentUser
-            );
-          } catch (error) {
-            console.error("Error loading user profile from existing session:", error);
-          }
-        } else {
-          console.log("Nenhuma sessão encontrada ou componente desmontado");
-        }
-      } catch (error) {
-        console.error('Error checking authentication status:', error);
-        if (isMounted) {
-          setSessionError(error as Error);
-          toast({
-            title: "Erro de autenticação",
-            description: "Ocorreu um erro ao verificar sua sessão",
-            variant: "destructive"
+        if (profile) {
+          setCurrentUser({
+            id: session.session.user.id,
+            email: session.session.user.email || '',
+            name: profile.name,
+            role: profile.role,
+            status: profile.status,
+            max_simultaneous_chats: profile.max_simultaneous_chats
           });
+          setIsAuthenticated(true);
+          setUserRole(profile.role);
+        } else {
+          setIsAuthenticated(false);
+          setUserRole(null);
         }
-      } finally {
-        if (isMounted) {
-          setSessionChecked(true);
-        }
+      } else {
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        setUserRole(null);
       }
-    };
-    
-    getSession();
-    
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
+      setLoading(false);
+    });
   }, []);
-  
-  // Adicionar refresh token periódico para manter sessão ativa
-  useEffect(() => {
-    if (!authService.currentUser) return;
-    
-    const refreshInterval = setInterval(async () => {
-      try {
-        console.log("Refreshing session token...");
-        // Refresh da sessão para evitar expiração
-        const { error } = await supabase.auth.refreshSession();
-        if (error) {
-          console.warn("Erro ao atualizar sessão:", error);
-        }
-      } catch (err) {
-        console.error("Erro no refresh da sessão:", err);
-      }
-    }, 5 * 60 * 1000); // 5 minutos
-    
-    return () => clearInterval(refreshInterval);
-  }, [authService.currentUser]);
-  
-  const updateUser = async (userData: Partial<User>): Promise<User> => {
+
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    setError(null);
     try {
-      if (!authService.currentUser) throw new Error("No user is currently logged in");
-
-      console.log("Updating user profile:", userData);
-      
-      // Update the user profile in Supabase
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          name: userData.name,
-          email: userData.email,
-          avatar: userData.avatar,
-          department_id: userData.department_id,
-          max_simultaneous_chats: userData.maxSimultaneousChats,
-          status: userData.status
-        })
-        .eq('id', authService.currentUser.id);
-
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (error) {
-        console.error("Error updating profile:", error);
+        setError(error.message);
+        toast({
+          title: "Erro ao logar",
+          description: error.message || "Não foi possível logar. Tente novamente.",
+          variant: "destructive"
+        });
         throw error;
       }
-
-      // Update local state
-      const updatedUser = { ...authService.currentUser, ...userData };
-      authService.setCurrentUser(updatedUser);
-      
-      toast({
-        title: "Perfil atualizado",
-        description: "Suas informações foram atualizadas com sucesso",
-      });
-      
-      return updatedUser;
     } catch (error: any) {
-      console.error('Update user error:', error.message);
-      toast({
-        title: "Erro ao atualizar usuário",
-        description: error.message || "Não foi possível atualizar os dados do usuário",
-        variant: "destructive",
-      });
-      throw error;
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const value = {
-    ...authService,
-    updateUser,
-    loading: authService.loading || profileLoading || !sessionChecked,
-    error: sessionError?.message
+
+  const logout = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        setError(error.message);
+        toast({
+          title: "Erro ao fazer logout",
+          description: error.message || "Não foi possível fazer logout. Tente novamente.",
+          variant: "destructive"
+        });
+        throw error;
+      }
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+      setUserRole(null);
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const register = async (email: string, password: string, name: string, role: string) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const { data: signupData, error: signupError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            role
+          }
+        }
+      });
+      
+      if (signupError) throw signupError;
+      
+      toast({
+        title: "Conta criada com sucesso!",
+        description: "Verifique seu email para confirmar seu cadastro.",
+      });
+      
+      return signupData;
+    } catch (error: any) {
+      console.error("Erro ao registrar usuário:", error);
+      setError(error.message || "Falha ao registrar. Tente novamente.");
+      toast({
+        title: "Erro ao criar conta",
+        description: error.message || "Não foi possível criar sua conta. Tente novamente.",
+        variant: "destructive"
+      });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const updateUser = async (userData: Partial<User>): Promise<User> => {
+    setLoading(true);
+    setError(null);
+  
+    try {
+      if (!currentUser?.id) {
+        throw new Error("User not authenticated");
+      }
+  
+      // Centralize the update object
+      const updates: { [key: string]: any } = {};
+      if (userData.name !== undefined) updates.name = userData.name;
+      if (userData.status !== undefined) updates.status = userData.status;
+      if (userData.max_simultaneous_chats !== undefined) updates.max_simultaneous_chats = userData.max_simultaneous_chats;
+  
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', currentUser.id)
+        .select()
+        .single();
+  
+      if (error) {
+        console.error("Erro ao atualizar perfil:", error);
+        setError(error.message);
+        toast({
+          title: "Erro ao atualizar perfil",
+          description: error.message || "Não foi possível atualizar seu perfil. Tente novamente.",
+          variant: "destructive"
+        });
+        throw error;
+      }
+  
+      const updatedUser: User = {
+        ...currentUser,
+        ...userData,
+        name: data.name,
+        status: data.status,
+        max_simultaneous_chats: data.max_simultaneous_chats
+      };
+  
+      setCurrentUser(updatedUser);
+      return updatedUser;
+    } catch (error: any) {
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const hasPermission = useCallback((requiredRole: string): boolean => {
+    if (!userRole) {
+      console.log("hasPermission: No current user");
+      return false;
+    }
+    const userRoleLevel = ROLE_HIERARCHY[userRole] || 0;
+    const requiredRoleLevel = ROLE_HIERARCHY[requiredRole] || 0;
+    
+    const hasRole = userRoleLevel >= requiredRoleLevel;
+    console.log(`hasPermission: User role ${userRole} (${userRoleLevel}), required role ${requiredRole} (${requiredRoleLevel}), result: ${hasRole}`);
+    return hasRole;
+  }, [userRole]);
+
+  const value: AuthContextType = {
+    currentUser,
+    login,
+    logout,
+    register,
+    updateUser,
+    loading,
+    error,
+    isAuthenticated,
+    userRole,
+    hasPermission,
+    setCurrentUser
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
