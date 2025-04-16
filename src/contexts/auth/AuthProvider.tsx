@@ -5,6 +5,7 @@ import { AuthContextType, ROLE_HIERARCHY } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
+import { fetchUserProfile } from './userProfileService';
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -16,75 +17,94 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const setupAuth = async () => {
-      const { data } = await supabase.auth.getSession();
+      setLoading(true);
+      console.log("Configurando autenticação...");
       
-      // Set up auth listener
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(
-        async (event, authSession) => {
-          if (authSession?.user) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', authSession.user.id)
-              .single();
-
-            if (profile) {
-              setCurrentUser({
-                id: authSession.user.id,
-                email: authSession.user.email || '',
-                name: profile.name,
-                role: profile.role,
-                status: (profile.status || 'active') as 'active' | 'inactive',
-                maxSimultaneousChats: profile.max_simultaneous_chats,
-                avatar: profile.avatar || '',
-                department: null,
-                department_id: profile.department_id
-              });
-              setIsAuthenticated(true);
-              setUserRole(profile.role);
+      try {
+        // Set up auth listener BEFORE checking session
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, authSession) => {
+            console.log("Auth state changed:", event, authSession?.user?.id);
+            
+            if (event === 'SIGNED_OUT') {
+              console.log("Usuário desconectado");
+              setCurrentUser(null);
+              setIsAuthenticated(false);
+              setUserRole(null);
+              setLoading(false);
+              return;
+            }
+            
+            if (authSession?.user) {
+              console.log("Usuário autenticado, carregando perfil...");
+              try {
+                const profile = await fetchUserProfile(authSession.user.id);
+                
+                if (profile) {
+                  console.log("Perfil carregado:", profile);
+                  setCurrentUser(profile);
+                  setIsAuthenticated(true);
+                  setUserRole(profile.role);
+                } else {
+                  console.log("Nenhum perfil encontrado");
+                  setCurrentUser(null);
+                  setIsAuthenticated(false);
+                  setUserRole(null);
+                }
+              } catch (error) {
+                console.error("Erro ao carregar perfil:", error);
+                setCurrentUser(null);
+                setIsAuthenticated(false);
+                setUserRole(null);
+              }
             } else {
+              console.log("Nenhum usuário na sessão");
+              setCurrentUser(null);
               setIsAuthenticated(false);
               setUserRole(null);
             }
-          } else {
-            setCurrentUser(null);
-            setIsAuthenticated(false);
-            setUserRole(null);
+            
+            setLoading(false);
           }
-          setLoading(false);
-        }
-      );
+        );
 
-      // Initial session check
-      if (data.session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.session.user.id)
-          .single();
-          
-        if (profile) {
-          setCurrentUser({
-            id: data.session.user.id,
-            email: data.session.user.email || '',
-            name: profile.name,
-            role: profile.role,
-            status: (profile.status || 'active') as 'active' | 'inactive',
-            maxSimultaneousChats: profile.max_simultaneous_chats,
-            avatar: profile.avatar || '',
-            department: null,
-            department_id: profile.department_id
-          });
-          setIsAuthenticated(true);
-          setUserRole(profile.role);
+        // AFTER setting up listener, check initial session
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error("Erro ao obter sessão:", sessionError);
+          setLoading(false);
+          return;
         }
+          
+        if (data.session?.user) {
+          console.log("Sessão inicial encontrada, carregando perfil...");
+          try {
+            const profile = await fetchUserProfile(data.session.user.id);
+            
+            if (profile) {
+              console.log("Perfil inicial carregado:", profile);
+              setCurrentUser(profile);
+              setIsAuthenticated(true);
+              setUserRole(profile.role);
+            }
+          } catch (profileError) {
+            console.error("Erro ao carregar perfil inicial:", profileError);
+          }
+        } else {
+          console.log("Nenhuma sessão inicial encontrada");
+        }
+        
+        setLoading(false);
+        
+        return () => {
+          console.log("Desativando listener de autenticação");
+          subscription.unsubscribe();
+        };
+      } catch (setupError) {
+        console.error("Erro ao configurar autenticação:", setupError);
+        setLoading(false);
       }
-      
-      setLoading(false);
-      
-      return () => {
-        subscription.unsubscribe();
-      };
     };
     
     setupAuth();
@@ -94,11 +114,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Iniciando login com Supabase...");
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+      
       if (error) {
+        console.error("Erro de login Supabase:", error);
         setError(error.message);
         toast({
           title: "Erro ao logar",
@@ -107,8 +130,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         throw error;
       }
+      
+      console.log("Login Supabase bem-sucedido", data.user?.id);
+      // Auth state change listener will update the user state
+      
     } catch (error: any) {
+      console.error("Erro no processo de login:", error);
       setError(error.message);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -128,9 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         throw error;
       }
-      setCurrentUser(null);
-      setIsAuthenticated(false);
-      setUserRole(null);
+      // Auth state change listener will clear the user state
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -260,3 +287,5 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
+export default AuthProvider;

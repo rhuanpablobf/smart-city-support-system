@@ -13,17 +13,20 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, isAuthenticated, userRole, loading: authLoading } = useAuth();
+  const { login, isAuthenticated, userRole, currentUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   
   const from = location.state?.from?.pathname || '/';
 
+  // Debug logging
+  useEffect(() => {
+    console.log("Auth state changed - isAuthenticated:", isAuthenticated, "userRole:", userRole, "currentUser:", currentUser ? currentUser.id : "none", "authLoading:", authLoading);
+  }, [isAuthenticated, userRole, currentUser, authLoading]);
+
   // Effect to handle redirection when already authenticated
   useEffect(() => {
-    console.log("Login page - isAuthenticated check:", isAuthenticated, "userRole:", userRole, "authLoading:", authLoading);
-    
     if (isAuthenticated && userRole && !authLoading) {
       // Redirecionar baseado no papel do usuário
       let redirectPath = '/';
@@ -39,7 +42,7 @@ const Login = () => {
       console.log(`Usuário autenticado como ${userRole}, redirecionando para: ${redirectPath}`);
       navigate(redirectPath, { replace: true });
     }
-  }, [isAuthenticated, navigate, userRole, authLoading]);
+  }, [isAuthenticated, userRole, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

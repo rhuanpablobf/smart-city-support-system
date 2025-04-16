@@ -10,3 +10,6 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Export as default for backward compatibility
+export default useAuth;

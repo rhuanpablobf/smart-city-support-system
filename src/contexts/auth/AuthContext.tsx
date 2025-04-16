@@ -3,6 +3,7 @@ import { createContext } from 'react';
 import { AuthContextType } from './types';
 
 // Create auth context
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
-export { AuthContext };
+// Export as default for backward compatibility
+export default AuthContext;

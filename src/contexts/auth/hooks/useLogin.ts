@@ -29,14 +29,9 @@ export function useLogin() {
         throw new Error("Não foi possível autenticar o usuário");
       }
       
-      console.log("Login Supabase bem-sucedido");
+      console.log("Login Supabase bem-sucedido, usuário:", data.user.id);
       
-      toast({
-        title: "Login bem-sucedido",
-        description: `Bem-vindo de volta!`,
-      });
-      
-      // Return null instead of user since the user profile will be loaded separately
+      // O perfil do usuário será carregado pelo AuthProvider
       return null;
     } catch (error: any) {
       console.error("Login falhou com erro:", error);

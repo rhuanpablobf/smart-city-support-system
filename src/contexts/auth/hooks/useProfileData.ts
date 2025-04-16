@@ -1,34 +1,40 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User } from '@/types';
-import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from '../useAuth';
 import { fetchUserProfile } from '../userProfileService';
 
 export function useProfileData() {
+  const { currentUser, setCurrentUser } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
-  const { toast } = useToast();
+  const [error, setError] = useState<string | null>(null);
 
-  const loadUserProfile = async (
-    userId: string,
-    setCurrentUser: (user: User | null) => void
-  ): Promise<void> => {
+  const refreshUserProfile = async () => {
+    if (!currentUser?.id) return;
+    
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
+      console.log("Atualizando perfil do usuário...");
+      const updatedProfile = await fetchUserProfile(currentUser.id);
       
-      const user = await fetchUserProfile(userId);
-      setCurrentUser(user);
-      
-    } catch (error: any) {
-      console.error('Error loading user profile:', error);
-      toast({
-        title: "Erro ao carregar perfil",
-        description: error.message || "Não foi possível carregar os dados do usuário",
-        variant: "destructive",
-      });
+      if (updatedProfile) {
+        console.log("Perfil atualizado:", updatedProfile);
+        setCurrentUser(updatedProfile);
+      }
+    } catch (err: any) {
+      console.error("Erro ao atualizar perfil:", err);
+      setError(err.message || "Erro ao atualizar perfil");
     } finally {
       setLoading(false);
     }
   };
 
-  return { loadUserProfile, loading };
+  return {
+    userProfile: currentUser,
+    loading,
+    error,
+    refreshUserProfile
+  };
 }
