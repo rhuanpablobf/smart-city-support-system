@@ -1,22 +1,29 @@
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { User } from '@/types';
 
-export function useUserFilter(users: User[]) {
+export const useUserFilter = (users: User[]) => {
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Filter users based on search term
+  
   const filteredUsers = useMemo(() => {
-    return users.filter(user => 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.department && user.department.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    if (!searchTerm.trim()) {
+      return users;
+    }
+    
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    
+    return users.filter((user) => {
+      return (
+        user.name.toLowerCase().includes(lowerCaseSearchTerm) ||
+        (user.email && user.email.toLowerCase().includes(lowerCaseSearchTerm)) ||
+        (user.department && user.department.toLowerCase().includes(lowerCaseSearchTerm))
+      );
+    });
   }, [users, searchTerm]);
-
+  
   return {
+    filteredUsers,
     searchTerm,
     setSearchTerm,
-    filteredUsers
   };
-}
+};

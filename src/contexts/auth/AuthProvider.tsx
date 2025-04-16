@@ -1,5 +1,6 @@
+
 import React, { ReactNode, useState, useCallback, useEffect } from 'react';
-import AuthContext from './AuthContext';
+import { AuthContext } from './AuthContext';
 import { AuthContextType, ROLE_HIERARCHY } from './types';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
@@ -14,38 +15,73 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const session = supabase.auth.getSession();
+    const setupAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      
+      // Set up auth listener
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(
+        async (event, authSession) => {
+          if (authSession?.user) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', authSession.user.id)
+              .single();
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.session?.user) {
+            if (profile) {
+              setCurrentUser({
+                id: authSession.user.id,
+                email: authSession.user.email || '',
+                name: profile.name,
+                role: profile.role,
+                status: profile.status || 'active',
+                maxSimultaneousChats: profile.max_simultaneous_chats
+              });
+              setIsAuthenticated(true);
+              setUserRole(profile.role);
+            } else {
+              setIsAuthenticated(false);
+              setUserRole(null);
+            }
+          } else {
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+            setUserRole(null);
+          }
+          setLoading(false);
+        }
+      );
+
+      // Initial session check
+      if (data.session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.session.user.id)
+          .eq('id', data.session.user.id)
           .single();
-
+          
         if (profile) {
           setCurrentUser({
-            id: session.session.user.id,
-            email: session.session.user.email || '',
+            id: data.session.user.id,
+            email: data.session.user.email || '',
             name: profile.name,
             role: profile.role,
-            status: profile.status,
-            max_simultaneous_chats: profile.max_simultaneous_chats
+            status: profile.status || 'active',
+            maxSimultaneousChats: profile.max_simultaneous_chats
           });
           setIsAuthenticated(true);
           setUserRole(profile.role);
-        } else {
-          setIsAuthenticated(false);
-          setUserRole(null);
         }
-      } else {
-        setCurrentUser(null);
-        setIsAuthenticated(false);
-        setUserRole(null);
       }
+      
       setLoading(false);
-    });
+      
+      return () => {
+        subscription.unsubscribe();
+      };
+    };
+    
+    setupAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -94,7 +130,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   const register = async (email: string, password: string, name: string, role: string) => {
     setLoading(true);
@@ -147,7 +183,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const updates: { [key: string]: any } = {};
       if (userData.name !== undefined) updates.name = userData.name;
       if (userData.status !== undefined) updates.status = userData.status;
-      if (userData.max_simultaneous_chats !== undefined) updates.max_simultaneous_chats = userData.max_simultaneous_chats;
+      if (userData.maxSimultaneousChats !== undefined) updates.max_simultaneous_chats = userData.maxSimultaneousChats;
   
       const { data, error } = await supabase
         .from('profiles')
@@ -171,8 +207,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ...currentUser,
         ...userData,
         name: data.name,
-        status: data.status,
-        max_simultaneous_chats: data.max_simultaneous_chats
+        status: data.status as "active" | "inactive",
+        maxSimultaneousChats: data.max_simultaneous_chats
       };
   
       setCurrentUser(updatedUser);

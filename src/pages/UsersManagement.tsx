@@ -1,34 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { UserPlus } from 'lucide-react';
 import { User } from '@/types';
-import { useUserManagement, UserFormValues } from '@/hooks/useUserManagement';
+import { useUserManagement } from '@/hooks/useUserManagement';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
 import { DeleteUserDialog } from '@/components/users/DeleteUserDialog';
 import { UserTableHeader } from '@/components/users/UserTableHeader';
 import { UserTable } from '@/components/users/UserTable';
 import { useAuth } from '@/contexts/auth';
 import { useToast } from "@/components/ui/use-toast";
+import { useUserCrud } from '@/hooks/user/useUserCrud';
+import { useUserFilter } from '@/hooks/user/useUserFilter';
 
 const UsersManagement = () => {
   const {
-    filteredUsers,
+    users,
     departments,
     services,
-    searchTerm,
-    setSearchTerm,
-    addUser,
-    updateUser,
-    deleteUser,
-    loading
+    loading: loadingUsers,
+    error,
+    refreshUsers
   } = useUserManagement();
+  
+  const { addUser, updateUser, deleteUser } = useUserCrud(refreshUsers);
+  const { filteredUsers, searchTerm, setSearchTerm } = useUserFilter(users);
   
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   
   const handleOpenAddUser = () => {
     setSelectedUser(null);
@@ -45,7 +48,8 @@ const UsersManagement = () => {
     setIsDeleteDialogOpen(true);
   };
   
-  const handleSaveUser = async (formData: UserFormValues) => {
+  const handleSaveUser = async (formData: any) => {
+    setLoading(true);
     try {
       if (selectedUser) {
         await updateUser(selectedUser.id, formData);
@@ -70,11 +74,14 @@ const UsersManagement = () => {
         variant: "destructive",
       });
       // Keep the dialog open on error so the user can fix the issue
+    } finally {
+      setLoading(false);
     }
   };
   
   const handleDeleteConfirm = async () => {
     if (selectedUser) {
+      setLoading(true);
       try {
         await deleteUser(selectedUser.id);
         setIsDeleteDialogOpen(false);
@@ -88,6 +95,8 @@ const UsersManagement = () => {
           description: error.message || "Ocorreu um erro ao excluir o usuário",
           variant: "destructive",
         });
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -116,7 +125,7 @@ const UsersManagement = () => {
             onAddUser={handleOpenAddUser}
           />
           
-          {loading ? (
+          {(loadingUsers || loading) ? (
             <div className="flex justify-center py-8">
               <div className="animate-pulse text-center">
                 <p className="text-muted-foreground">Carregando usuários...</p>

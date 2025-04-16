@@ -1,119 +1,201 @@
 
+import { useState } from 'react';
 import { User, UserFormValues } from '@/types';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  addUser as addUserService,
-  updateUser as updateUserService,
-  deleteUser as deleteUserService
-} from '@/services/user';
-import { getDepartmentName } from '@/services/serviceService';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
-export function useUserCrud(users: User[], setUsers: React.Dispatch<React.SetStateAction<User[]>>) {
+export const useUserCrud = (refreshUsers: () => Promise<any>) => {
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   // Add new user
-  const addUser = async (userData: UserFormValues) => {
+  const addUser = async (userData: UserFormValues): Promise<User> => {
+    setLoading(true);
+    
     try {
-      // Ensure status is always defined
-      const userDataWithStatus = {
-        ...userData,
-        status: userData.status || 'active'
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password || generateRandomPassword(),
+        options: {
+          data: {
+            name: userData.name,
+            role: userData.role
+          }
+        }
+      });
+      
+      if (authError) throw new Error(authError.message);
+      
+      if (!authData.user) {
+        throw new Error('Falha ao criar usuário');
+      }
+      
+      // Create or update profile record
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: authData.user.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          department_id: userData.department_id || null,
+          status: userData.status || 'active',
+          max_simultaneous_chats: userData.maxSimultaneousChats || 5
+        })
+        .select()
+        .single();
+      
+      if (profileError) throw new Error(profileError.message);
+      
+      // If services are selected, create agent_services records
+      if (userData.serviceIds && userData.serviceIds.length > 0) {
+        const serviceRecords = userData.serviceIds.map(serviceId => ({
+          agent_id: authData.user!.id,
+          service_id: serviceId
+        }));
+        
+        const { error: servicesError } = await supabase
+          .from('agent_services')
+          .insert(serviceRecords);
+        
+        if (servicesError) throw new Error(servicesError.message);
+      }
+      
+      // Refresh the user list
+      await refreshUsers();
+      
+      return {
+        id: authData.user.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        department_id: userData.department_id || null,
+        status: userData.status || 'active',
+        maxSimultaneousChats: userData.maxSimultaneousChats || 5
       };
-      
-      const newUser = await addUserService(userDataWithStatus);
-      
-      // Update local state
-      setUsers(prevUsers => [...prevUsers, newUser]);
-      
-      toast({
-        title: "Usuário adicionado",
-        description: "O novo usuário foi adicionado com sucesso.",
-      });
-      
-      return newUser;
     } catch (error: any) {
-      toast({
-        title: "Erro ao adicionar usuário",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error('Error adding user:', error);
+      throw new Error(error.message || 'Falha ao adicionar usuário');
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Edit existing user
-  const updateUser = async (userId: string, userData: UserFormValues) => {
+  
+  // Update existing user
+  const updateUser = async (userId: string, userData: Partial<UserFormValues>): Promise<User> => {
+    setLoading(true);
+    
     try {
-      // Ensure status is always defined
-      const userDataWithStatus = {
-        ...userData,
-        status: userData.status || 'active'
+      // Update profile record
+      const updates: any = {
+        name: userData.name,
+        role: userData.role,
+        department_id: userData.department_id,
+        status: userData.status,
+        max_simultaneous_chats: userData.maxSimultaneousChats
       };
       
-      await updateUserService(userId, userDataWithStatus);
-      
-      // Fetch department name for display
-      const departmentName = userData.department_id ? 
-        await getDepartmentName(userData.department_id) : 
-        null;
-      
-      // Update local state
-      setUsers(prevUsers => 
-        prevUsers.map(user => 
-          user.id === userId 
-            ? { 
-                ...user, 
-                name: userData.name,
-                email: userData.email,
-                role: userData.role,
-                department: departmentName,
-                department_id: userData.department_id,
-                serviceIds: userData.serviceIds,
-                status: userDataWithStatus.status
-              } 
-            : user
-        )
-      );
-      
-      toast({
-        title: "Usuário atualizado",
-        description: "O usuário foi atualizado com sucesso.",
+      // Filter out undefined values
+      Object.keys(updates).forEach(key => {
+        if (updates[key] === undefined) {
+          delete updates[key];
+        }
       });
+      
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single();
+      
+      if (profileError) throw new Error(profileError.message);
+      
+      // If services are provided, update agent_services
+      if (userData.serviceIds !== undefined) {
+        // First, delete all existing services for this agent
+        const { error: deleteError } = await supabase
+          .from('agent_services')
+          .delete()
+          .eq('agent_id', userId);
+        
+        if (deleteError) throw new Error(deleteError.message);
+        
+        // Then, insert the new services
+        if (userData.serviceIds.length > 0) {
+          const serviceRecords = userData.serviceIds.map(serviceId => ({
+            agent_id: userId,
+            service_id: serviceId
+          }));
+          
+          const { error: servicesError } = await supabase
+            .from('agent_services')
+            .insert(serviceRecords);
+          
+          if (servicesError) throw new Error(servicesError.message);
+        }
+      }
+      
+      // If password is provided, update it
+      if (userData.password) {
+        const { error: passwordError } = await supabase.auth.admin.updateUserById(
+          userId,
+          { password: userData.password }
+        );
+        
+        if (passwordError) throw new Error(passwordError.message);
+      }
+      
+      // Refresh the user list
+      await refreshUsers();
+      
+      return {
+        id: userId,
+        name: profile.name,
+        email: profile.email,
+        role: profile.role,
+        department_id: profile.department_id,
+        status: profile.status,
+        maxSimultaneousChats: profile.max_simultaneous_chats
+      };
     } catch (error: any) {
-      toast({
-        title: "Erro ao atualizar usuário",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error('Error updating user:', error);
+      throw new Error(error.message || 'Falha ao atualizar usuário');
+    } finally {
+      setLoading(false);
     }
   };
-
+  
   // Delete user
-  const deleteUser = async (userId: string) => {
+  const deleteUser = async (userId: string): Promise<void> => {
+    setLoading(true);
+    
     try {
-      await deleteUserService(userId);
+      // Delete the auth user (this will cascade to profiles)
+      const { error } = await supabase.auth.admin.deleteUser(userId);
       
-      // Update local state
-      setUsers(prevUsers => prevUsers.filter(user => user.id !== userId));
+      if (error) throw new Error(error.message);
       
-      toast({
-        title: "Usuário removido",
-        description: "O usuário foi removido com sucesso.",
-      });
+      // Refresh the user list
+      await refreshUsers();
     } catch (error: any) {
-      toast({
-        title: "Erro ao remover usuário",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      console.error('Error deleting user:', error);
+      throw new Error(error.message || 'Falha ao excluir usuário');
+    } finally {
+      setLoading(false);
     }
   };
-
+  
+  // Helper function to generate a random password
+  const generateRandomPassword = () => {
+    return Math.random().toString(36).slice(-8) + Math.random().toString(36).toUpperCase().slice(-2) + '!';
+  };
+  
   return {
     addUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    loading
   };
-}
+};
